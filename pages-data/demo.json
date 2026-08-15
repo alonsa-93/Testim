@@ -1,0 +1,22 @@
+{
+  "id": "demo",
+  "name": "סטודיו אלון — דף דוגמה",
+  "themeId": "default",
+  "meta": {
+    "title": "סטודיו אלון — אדריכלות ועיצוב פנים",
+    "description": "סטודיו בוטיק לאדריכלות ועיצוב פנים: תכנון, ליווי ופיקוח מהרעיון ועד המפתח."
+  },
+  "blocks": [
+    { "id": "navbar-1", "type": "navbar", "content": {} },
+    { "id": "hero-1", "type": "hero", "content": {} },
+    { "id": "features-1", "type": "features", "content": {} },
+    { "id": "about-1", "type": "about", "content": {} },
+    { "id": "steps-1", "type": "steps", "content": {} },
+    { "id": "testimonials-1", "type": "testimonials", "content": {} },
+    { "id": "pricing-1", "type": "pricing", "content": {} },
+    { "id": "faq-1", "type": "faq", "content": {} },
+    { "id": "leadForm-1", "type": "leadForm", "content": {} },
+    { "id": "cta-1", "type": "cta", "content": {} },
+    { "id": "footer-1", "type": "footer", "content": {} }
+  ]
+}

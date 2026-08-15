@@ -7,6 +7,34 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Field, Input, Textarea } from "@/components/ui/field";
 import { IconCheck, IconMail, IconMapPin, IconPhone } from "@/components/icons";
+import type { BlockDef } from "@/lib/blocks";
+import type { BlockContent } from "@/lib/fields";
+
+interface LeadFormContent {
+  eyebrow: string;
+  title: string;
+  text: string;
+  phone: string;
+  email: string;
+  address: string;
+  submitLabel: string;
+  privacyNote: string;
+  successTitle: string;
+  successText: string;
+}
+
+const defaults: LeadFormContent = {
+  eyebrow: "מדברים?",
+  title: "הצעד הראשון הוא שיחה אחת",
+  text: "השאירו פרטים ונחזור אליכם עד יום העסקים הבא לשיחת היכרות קצרה — בלי התחייבות ובלי לחץ מכירתי.",
+  phone: "050-000-0000",
+  email: "hello@studio-alon.co.il",
+  address: "שדרות רוטשילד 1, תל אביב",
+  submitLabel: "שליחה — נחזור אליכם בהקדם",
+  privacyNote: "הפרטים ישמשו לחזרה אליכם בלבד ולא יועברו לגורם שלישי.",
+  successTitle: "תודה! הפנייה התקבלה",
+  successText: "נחזור אליכם עד יום העסקים הבא. בינתיים אפשר להציץ בשאלות הנפוצות.",
+};
 
 type FormErrors = Partial<Record<"name" | "phone" | "email", string>>;
 
@@ -17,12 +45,15 @@ function validate(data: FormData): FormErrors {
   const email = String(data.get("email") ?? "").trim();
 
   if (name.length < 2) errors.name = "נשמח לשם מלא";
-  if (!/^0\d{8,9}$/.test(phone)) errors.phone = "מספר טלפון ישראלי תקין, למשל 050-1234567";
-  if (email && !/^\S+@\S+\.\S+$/.test(email)) errors.email = "כתובת אימייל לא תקינה";
+  if (!/^0\d{8,9}$/.test(phone))
+    errors.phone = "מספר טלפון ישראלי תקין, למשל 050-1234567";
+  if (email && !/^\S+@\S+\.\S+$/.test(email))
+    errors.email = "כתובת אימייל לא תקינה";
   return errors;
 }
 
-export function LeadForm() {
+function LeadForm({ content }: { content: BlockContent }) {
+  const c = { ...defaults, ...content } as LeadFormContent;
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitted, setSubmitted] = useState(false);
 
@@ -48,60 +79,70 @@ export function LeadForm() {
     <Section id="contact">
       <div className="grid gap-14 lg:grid-cols-2">
         <div>
-          <Badge>מדברים?</Badge>
-          <h2 className="mt-3 text-h2 text-ink">
-            הצעד הראשון הוא שיחה אחת
-          </h2>
-          <p className="mt-5 max-w-lg text-lead text-muted">
-            השאירו פרטים ונחזור אליכם עד יום העסקים הבא לשיחת היכרות קצרה —
-            בלי התחייבות ובלי לחץ מכירתי.
-          </p>
+          {c.eyebrow && <Badge>{c.eyebrow}</Badge>}
+          <h2 className="mt-3 text-h2 text-ink">{c.title}</h2>
+          {c.text && <p className="mt-5 max-w-lg text-lead text-muted">{c.text}</p>}
 
           <ul className="mt-9 space-y-5">
-            <li className="flex items-center gap-3.5">
-              <span className="flex size-11 items-center justify-center rounded-field bg-primary/10 text-primary">
-                <IconPhone className="size-5" />
-              </span>
-              <div>
-                <p className="text-sm text-muted">טלפון</p>
-                <a href="tel:0500000000" className="font-semibold text-ink hover:text-primary" dir="ltr">
-                  050-000-0000
-                </a>
-              </div>
-            </li>
-            <li className="flex items-center gap-3.5">
-              <span className="flex size-11 items-center justify-center rounded-field bg-primary/10 text-primary">
-                <IconMail className="size-5" />
-              </span>
-              <div>
-                <p className="text-sm text-muted">אימייל</p>
-                <a href="mailto:hello@studio-alon.co.il" className="font-semibold text-ink hover:text-primary" dir="ltr">
-                  hello@studio-alon.co.il
-                </a>
-              </div>
-            </li>
-            <li className="flex items-center gap-3.5">
-              <span className="flex size-11 items-center justify-center rounded-field bg-primary/10 text-primary">
-                <IconMapPin className="size-5" />
-              </span>
-              <div>
-                <p className="text-sm text-muted">סטודיו</p>
-                <p className="font-semibold text-ink">שדרות רוטשילד 1, תל אביב</p>
-              </div>
-            </li>
+            {c.phone && (
+              <li className="flex items-center gap-3.5">
+                <span className="flex size-11 items-center justify-center rounded-field bg-primary/10 text-primary">
+                  <IconPhone className="size-5" />
+                </span>
+                <div>
+                  <p className="text-sm text-muted">טלפון</p>
+                  <a
+                    href={`tel:${c.phone.replace(/[^\d+]/g, "")}`}
+                    className="font-semibold text-ink hover:text-primary"
+                    dir="ltr"
+                  >
+                    {c.phone}
+                  </a>
+                </div>
+              </li>
+            )}
+            {c.email && (
+              <li className="flex items-center gap-3.5">
+                <span className="flex size-11 items-center justify-center rounded-field bg-primary/10 text-primary">
+                  <IconMail className="size-5" />
+                </span>
+                <div>
+                  <p className="text-sm text-muted">אימייל</p>
+                  <a
+                    href={`mailto:${c.email}`}
+                    className="font-semibold text-ink hover:text-primary"
+                    dir="ltr"
+                  >
+                    {c.email}
+                  </a>
+                </div>
+              </li>
+            )}
+            {c.address && (
+              <li className="flex items-center gap-3.5">
+                <span className="flex size-11 items-center justify-center rounded-field bg-primary/10 text-primary">
+                  <IconMapPin className="size-5" />
+                </span>
+                <div>
+                  <p className="text-sm text-muted">סטודיו</p>
+                  <p className="font-semibold text-ink">{c.address}</p>
+                </div>
+              </li>
+            )}
           </ul>
         </div>
 
         <Card className="p-6 md:p-9">
           {submitted ? (
-            <div role="status" className="flex h-full min-h-72 flex-col items-center justify-center text-center">
+            <div
+              role="status"
+              className="flex h-full min-h-72 flex-col items-center justify-center text-center"
+            >
               <span className="flex size-14 items-center justify-center rounded-full bg-primary text-on-primary">
                 <IconCheck className="size-7" />
               </span>
-              <h3 className="mt-5 text-h3 text-ink">תודה! הפנייה התקבלה</h3>
-              <p className="mt-2 max-w-xs text-muted">
-                נחזור אליכם עד יום העסקים הבא. בינתיים אפשר להציץ בשאלות הנפוצות.
-              </p>
+              <h3 className="mt-5 text-h3 text-ink">{c.successTitle}</h3>
+              <p className="mt-2 max-w-xs text-muted">{c.successText}</p>
               <Button
                 variant="ghost"
                 className="mt-6"
@@ -167,11 +208,11 @@ export function LeadForm() {
               </div>
 
               <Button type="submit" size="lg" className="w-full">
-                שליחה — נחזור אליכם בהקדם
+                {c.submitLabel}
               </Button>
-              <p className="text-center text-xs text-muted">
-                הפרטים ישמשו לחזרה אליכם בלבד ולא יועברו לגורם שלישי.
-              </p>
+              {c.privacyNote && (
+                <p className="text-center text-xs text-muted">{c.privacyNote}</p>
+              )}
             </form>
           )}
         </Card>
@@ -179,3 +220,24 @@ export function LeadForm() {
     </Section>
   );
 }
+
+export const leadFormBlock: BlockDef = {
+  type: "leadForm",
+  label: "טופס לידים",
+  description: "טופס יצירת קשר עם ולידציה בעברית, לצד פרטי התקשרות",
+  component: LeadForm,
+  defaults: defaults as unknown as BlockContent,
+  singleton: true,
+  fields: [
+    { key: "eyebrow", type: "text", label: "כותרת-על קטנה" },
+    { key: "title", type: "text", label: "כותרת" },
+    { key: "text", type: "textarea", label: "משפט הסבר" },
+    { key: "phone", type: "text", label: "טלפון" },
+    { key: "email", type: "text", label: "אימייל" },
+    { key: "address", type: "text", label: "כתובת" },
+    { key: "submitLabel", type: "text", label: "כפתור השליחה" },
+    { key: "privacyNote", type: "text", label: "הערת פרטיות מתחת לכפתור" },
+    { key: "successTitle", type: "text", label: "הודעת הצלחה — כותרת" },
+    { key: "successText", type: "textarea", label: "הודעת הצלחה — טקסט" },
+  ],
+};

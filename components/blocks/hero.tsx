@@ -3,14 +3,46 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { IconShield, IconStar } from "@/components/icons";
+import { renderEmphasis } from "@/lib/rich-text";
+import type { BlockDef } from "@/lib/blocks";
+import type { BlockContent } from "@/lib/fields";
 
-const stats = [
-  { value: "+12", label: "שנות ניסיון" },
-  { value: "+240", label: "פרויקטים שהושלמו" },
-  { value: "98%", label: "לקוחות ממליצים" },
-];
+interface HeroContent {
+  eyebrow: string;
+  title: string;
+  subtitle: string;
+  primaryCta: string;
+  primaryHref: string;
+  secondaryCta: string;
+  secondaryHref: string;
+  stats: Array<{ value: string; label: string }>;
+  quote: string;
+  quoteAuthor: string;
+  badge: string;
+}
 
-export function Hero() {
+const defaults: HeroContent = {
+  eyebrow: "סטודיו בוטיק לאדריכלות ועיצוב פנים",
+  title: "בית שמרגיש **בדיוק** כמו שדמיינתם",
+  subtitle:
+    "מהשרטוט הראשון ועד הרגע שבו מסובבים את המפתח — אנחנו מתכננים, מלווים ומפקחים, כדי שהתהליך יהיה רגוע והתוצאה מדויקת.",
+  primaryCta: "לתיאום פגישת ייעוץ",
+  primaryHref: "#contact",
+  secondaryCta: "איך זה עובד",
+  secondaryHref: "#about",
+  stats: [
+    { value: "+12", label: "שנות ניסיון" },
+    { value: "+240", label: "פרויקטים שהושלמו" },
+    { value: "98%", label: "לקוחות ממליצים" },
+  ],
+  quote: "ליווי צמוד מהיום הראשון. הבית יצא חלומי.",
+  quoteAuthor: "מיכל ועומר, תל אביב",
+  badge: "אחריות מלאה לפרויקט",
+};
+
+function Hero({ content }: { content: BlockContent }) {
+  const c = { ...defaults, ...content } as HeroContent;
+
   return (
     <div id="top" className="relative overflow-hidden">
       {/* כתמי צבע דקורטיביים ברקע */}
@@ -25,36 +57,39 @@ export function Hero() {
 
       <Container className="grid items-center gap-14 py-section lg:grid-cols-2">
         <div>
-          <Badge>סטודיו בוטיק לאדריכלות ועיצוב פנים</Badge>
+          {c.eyebrow && <Badge>{c.eyebrow}</Badge>}
           <h1 className="mt-5 text-display text-ink">
-            בית שמרגיש{" "}
-            <span className="text-accent">בדיוק</span>{" "}
-            כמו שדמיינתם
+            {renderEmphasis(c.title)}
           </h1>
-          <p className="mt-6 max-w-xl text-lead text-muted">
-            מהשרטוט הראשון ועד הרגע שבו מסובבים את המפתח — אנחנו מתכננים,
-            מלווים ומפקחים, כדי שהתהליך יהיה רגוע והתוצאה מדויקת.
-          </p>
+          {c.subtitle && (
+            <p className="mt-6 max-w-xl text-lead text-muted">{c.subtitle}</p>
+          )}
 
           <div className="mt-9 flex flex-wrap items-center gap-4">
-            <Button size="lg" href="#contact">
-              לתיאום פגישת ייעוץ
-            </Button>
-            <Button size="lg" variant="outline" href="#about">
-              איך זה עובד
-            </Button>
+            {c.primaryCta && (
+              <Button size="lg" href={c.primaryHref}>
+                {c.primaryCta}
+              </Button>
+            )}
+            {c.secondaryCta && (
+              <Button size="lg" variant="outline" href={c.secondaryHref}>
+                {c.secondaryCta}
+              </Button>
+            )}
           </div>
 
-          <dl className="mt-12 grid grid-cols-3 gap-6 border-t border-line pt-8">
-            {stats.map((s) => (
-              <div key={s.label} className="border-s-2 border-accent ps-4">
-                <dt className="order-2 text-sm text-muted">{s.label}</dt>
-                <dd className="font-heading text-h3 font-bold text-ink">
-                  {s.value}
-                </dd>
-              </div>
-            ))}
-          </dl>
+          {c.stats.length > 0 && (
+            <dl className="mt-12 grid grid-cols-3 gap-6 border-t border-line pt-8">
+              {c.stats.map((s, i) => (
+                <div key={i} className="border-s-2 border-accent ps-4">
+                  <dt className="order-2 text-sm text-muted">{s.label}</dt>
+                  <dd className="font-heading text-h3 font-bold text-ink">
+                    {s.value}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          )}
         </div>
 
         {/* קומפוזיציה ויזואלית דקורטיבית — מחליפה תמונת הירו */}
@@ -71,28 +106,65 @@ export function Hero() {
             </div>
           </div>
 
-          <Card className="absolute -bottom-6 -start-4 w-64 p-4 md:-start-8">
-            <div className="flex gap-1 text-accent" aria-hidden="true">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <IconStar key={i} className="size-4" />
-              ))}
-            </div>
-            <p className="mt-2 text-sm text-ink">
-              ״ליווי צמוד מהיום הראשון. הבית יצא חלומי.״
-            </p>
-            <p className="mt-1.5 text-xs font-semibold text-muted">
-              מיכל ועומר, תל אביב
-            </p>
-          </Card>
+          {c.quote && (
+            <Card className="absolute -bottom-6 -start-4 w-64 p-4 md:-start-8">
+              <div className="flex gap-1 text-accent" aria-hidden="true">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <IconStar key={i} className="size-4" />
+                ))}
+              </div>
+              <p className="mt-2 text-sm text-ink">״{c.quote}״</p>
+              <p className="mt-1.5 text-xs font-semibold text-muted">
+                {c.quoteAuthor}
+              </p>
+            </Card>
+          )}
 
-          <Card className="absolute -top-4 end-2 flex items-center gap-2.5 p-3 md:-end-4">
-            <IconShield className="size-5 text-primary" />
-            <span className="text-sm font-semibold text-ink">
-              אחריות מלאה לפרויקט
-            </span>
-          </Card>
+          {c.badge && (
+            <Card className="absolute -top-4 end-2 flex items-center gap-2.5 p-3 md:-end-4">
+              <IconShield className="size-5 text-primary" />
+              <span className="text-sm font-semibold text-ink">{c.badge}</span>
+            </Card>
+          )}
         </div>
       </Container>
     </div>
   );
 }
+
+export const heroBlock: BlockDef = {
+  type: "hero",
+  label: "כותרת ראשית (Hero)",
+  description: "החלק העליון של הדף — הכותרת הגדולה, המשפט המסביר וכפתורי הפעולה",
+  component: Hero,
+  defaults: defaults as unknown as BlockContent,
+  singleton: true,
+  fields: [
+    { key: "eyebrow", type: "text", label: "כותרת-על קטנה" },
+    {
+      key: "title",
+      type: "textarea",
+      label: "כותרת ראשית",
+      hint: "מילה בין ** ** תקבל את צבע המבטא — למשל: בית **מושלם**",
+    },
+    { key: "subtitle", type: "textarea", label: "משפט הסבר" },
+    { key: "primaryCta", type: "text", label: "כפתור ראשי — טקסט" },
+    { key: "primaryHref", type: "text", label: "כפתור ראשי — קישור" },
+    { key: "secondaryCta", type: "text", label: "כפתור משני — טקסט" },
+    { key: "secondaryHref", type: "text", label: "כפתור משני — קישור" },
+    {
+      key: "stats",
+      type: "list",
+      label: "מספרים מרשימים",
+      itemLabel: "נתון",
+      titleKey: "label",
+      fields: [
+        { key: "value", type: "text", label: "המספר" },
+        { key: "label", type: "text", label: "מה הוא מייצג" },
+      ],
+    },
+    { key: "quote", type: "textarea", label: "ציטוט צף" },
+    { key: "quoteAuthor", type: "text", label: "מי אמר את הציטוט" },
+    { key: "badge", type: "text", label: "תגית צפה עליונה" },
+  ],
+};

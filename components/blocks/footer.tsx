@@ -1,36 +1,58 @@
 import Link from "next/link";
 import { Container } from "@/components/ui/section";
 import { IconMail, IconMapPin, IconPhone } from "@/components/icons";
+import type { BlockDef } from "@/lib/blocks";
+import type { BlockContent } from "@/lib/fields";
 
-const navLinks = [
-  { href: "#features", label: "שירותים" },
-  { href: "#about", label: "הגישה שלנו" },
-  { href: "#pricing", label: "מסלולים" },
-  { href: "#faq", label: "שאלות נפוצות" },
-  { href: "#contact", label: "יצירת קשר" },
-];
+interface FooterContent {
+  brand: string;
+  about: string;
+  navTitle: string;
+  links: Array<{ label: string; href: string }>;
+  contactTitle: string;
+  phone: string;
+  email: string;
+  address: string;
+}
 
-export function Footer({ brand = "סטודיו אלון" }: { brand?: string }) {
+const defaults: FooterContent = {
+  brand: "סטודיו אלון",
+  about:
+    "סטודיו בוטיק לאדריכלות ועיצוב פנים. מתכננים, מלווים ומפקחים — כדי שהבית שתקבלו יהיה בדיוק הבית שרציתם.",
+  navTitle: "ניווט מהיר",
+  links: [
+    { label: "שירותים", href: "#features" },
+    { label: "הגישה שלנו", href: "#about" },
+    { label: "מסלולים", href: "#pricing" },
+    { label: "שאלות נפוצות", href: "#faq" },
+    { label: "יצירת קשר", href: "#contact" },
+  ],
+  contactTitle: "יצירת קשר",
+  phone: "050-000-0000",
+  email: "hello@studio-alon.co.il",
+  address: "שדרות רוטשילד 1, תל אביב",
+};
+
+function Footer({ content }: { content: BlockContent }) {
+  const c = { ...defaults, ...content } as FooterContent;
   const year = new Date().getFullYear();
+
   return (
     <footer className="border-t border-line bg-surface">
       <Container className="grid gap-10 py-14 md:grid-cols-[2fr_1fr_1.2fr]">
         <div>
           <p className="flex items-center gap-2.5 font-heading text-xl font-bold text-ink">
             <span className="size-3 rounded-sm bg-accent" aria-hidden="true" />
-            {brand}
+            {c.brand}
           </p>
-          <p className="mt-4 max-w-sm text-sm text-muted">
-            סטודיו בוטיק לאדריכלות ועיצוב פנים. מתכננים, מלווים ומפקחים —
-            כדי שהבית שתקבלו יהיה בדיוק הבית שרציתם.
-          </p>
+          <p className="mt-4 max-w-sm text-sm text-muted">{c.about}</p>
         </div>
 
         <nav aria-label="ניווט תחתון">
-          <p className="text-sm font-bold text-ink">ניווט מהיר</p>
+          <p className="text-sm font-bold text-ink">{c.navTitle}</p>
           <ul className="mt-4 space-y-2.5">
-            {navLinks.map((l) => (
-              <li key={l.href}>
+            {c.links.map((l, i) => (
+              <li key={i}>
                 <a
                   href={l.href}
                   className="text-sm text-muted transition-colors hover:text-ink"
@@ -43,24 +65,34 @@ export function Footer({ brand = "סטודיו אלון" }: { brand?: string }) 
         </nav>
 
         <div>
-          <p className="text-sm font-bold text-ink">יצירת קשר</p>
+          <p className="text-sm font-bold text-ink">{c.contactTitle}</p>
           <ul className="mt-4 space-y-2.5 text-sm text-muted">
-            <li className="flex items-center gap-2">
-              <IconPhone className="size-4 shrink-0" />
-              <a href="tel:0500000000" className="hover:text-ink" dir="ltr">
-                050-000-0000
-              </a>
-            </li>
-            <li className="flex items-center gap-2">
-              <IconMail className="size-4 shrink-0" />
-              <a href="mailto:hello@studio-alon.co.il" className="hover:text-ink" dir="ltr">
-                hello@studio-alon.co.il
-              </a>
-            </li>
-            <li className="flex items-center gap-2">
-              <IconMapPin className="size-4 shrink-0" />
-              שדרות רוטשילד 1, תל אביב
-            </li>
+            {c.phone && (
+              <li className="flex items-center gap-2">
+                <IconPhone className="size-4 shrink-0" />
+                <a
+                  href={`tel:${c.phone.replace(/[^\d+]/g, "")}`}
+                  className="hover:text-ink"
+                  dir="ltr"
+                >
+                  {c.phone}
+                </a>
+              </li>
+            )}
+            {c.email && (
+              <li className="flex items-center gap-2">
+                <IconMail className="size-4 shrink-0" />
+                <a href={`mailto:${c.email}`} className="hover:text-ink" dir="ltr">
+                  {c.email}
+                </a>
+              </li>
+            )}
+            {c.address && (
+              <li className="flex items-center gap-2">
+                <IconMapPin className="size-4 shrink-0" />
+                {c.address}
+              </li>
+            )}
           </ul>
         </div>
       </Container>
@@ -68,7 +100,7 @@ export function Footer({ brand = "סטודיו אלון" }: { brand?: string }) 
       <div className="border-t border-line">
         <Container className="flex flex-wrap items-center justify-between gap-3 py-5 text-sm text-muted">
           <p>
-            © {year} {brand} · כל הזכויות שמורות
+            © {year} {c.brand} · כל הזכויות שמורות
           </p>
           <div className="flex gap-5">
             <Link href="/accessibility" className="hover:text-ink">
@@ -83,3 +115,32 @@ export function Footer({ brand = "סטודיו אלון" }: { brand?: string }) 
     </footer>
   );
 }
+
+export const footerBlock: BlockDef = {
+  type: "footer",
+  label: "פוטר",
+  description: "תחתית העמוד: תיאור קצר, ניווט, פרטי קשר וקישורים משפטיים",
+  component: Footer,
+  defaults: defaults as unknown as BlockContent,
+  singleton: true,
+  fields: [
+    { key: "brand", type: "text", label: "שם העסק" },
+    { key: "about", type: "textarea", label: "משפט תיאור" },
+    { key: "navTitle", type: "text", label: "כותרת עמודת הניווט" },
+    {
+      key: "links",
+      type: "list",
+      label: "קישורי ניווט",
+      itemLabel: "קישור",
+      titleKey: "label",
+      fields: [
+        { key: "label", type: "text", label: "טקסט" },
+        { key: "href", type: "text", label: "יעד" },
+      ],
+    },
+    { key: "contactTitle", type: "text", label: "כותרת עמודת הקשר" },
+    { key: "phone", type: "text", label: "טלפון" },
+    { key: "email", type: "text", label: "אימייל" },
+    { key: "address", type: "text", label: "כתובת" },
+  ],
+};

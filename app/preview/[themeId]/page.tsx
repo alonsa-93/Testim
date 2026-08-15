@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { LandingPage } from "@/components/landing-page";
+import { PageRenderer } from "@/components/page-renderer";
 import { themeToStyle } from "@/lib/theme";
 import { themes, getTheme } from "@/themes";
+import { getDefaultPage } from "@/pages-data";
 
 /**
- * תצוגת דף הנחיתה תחת ערכה של לקוח מסוים:
+ * תצוגת דף הדוגמה תחת ערכה של לקוח מסוים:
  *   /preview/default · /preview/nova-dark · /preview/<לקוח-חדש>
- * כך בונים "אתר ללקוח": אותם בלוקים, ערכה אחרת.
+ * שימושי להשוואת ערכות על אותו תוכן בדיוק.
  */
 
 export function generateStaticParams() {
@@ -35,7 +36,7 @@ export default async function PreviewPage({
 
   return (
     <div style={themeToStyle(theme)} className="min-h-screen bg-bg text-ink">
-      <LandingPage />
+      <PageRenderer page={getDefaultPage()} />
     </div>
   );
 }
