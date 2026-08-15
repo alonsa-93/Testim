@@ -1,0 +1,48 @@
+{
+  "id": "nova-psycho",
+  "name": "נובה פסיכית",
+  "description": "ערכת ההדגמה המקסימלית: סגול חשמלי על ליים ניאון, רקע כמעט-שחור עם אורורה זוהרת, כרטיסים מוטים בתלת-ממד, זוהר עז וכפתורים שנלחצים פיזית. לא לכל לקוח — לצפייה ב-/preview/nova-psycho.",
+  "colors": {
+    "primary": "#B084F9",
+    "primaryHover": "#C7A6FB",
+    "onPrimary": "#180B2E",
+    "accent": "#C6F135",
+    "onAccent": "#161B04",
+    "background": "#0A0714",
+    "surface": "#170F29",
+    "text": "#F5F1FF",
+    "textMuted": "#B9AFD6",
+    "border": "#6C5C9A",
+    "danger": "#FF6B81"
+  },
+  "typography": {
+    "fontHeading": "secular-one",
+    "fontBody": "assistant",
+    "baseSize": 17,
+    "scale": 1.28,
+    "headingWeight": 800
+  },
+  "shape": {
+    "cardRadius": 24,
+    "buttonRadius": 999,
+    "fieldRadius": 14
+  },
+  "layout": {
+    "sectionSpacing": 108,
+    "maxWidth": 1200
+  },
+  "effects": {
+    "shadow": "strong",
+    "background": "aurora",
+    "backgroundIntensity": 0.7,
+    "noise": true,
+    "cardStyle": "tilt",
+    "glow": "intense",
+    "glowColor": "#C6F135",
+    "buttonStyle": "push",
+    "animation": {
+      "style": "scale",
+      "intensity": "dramatic"
+    }
+  }
+}

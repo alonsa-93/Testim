@@ -1,6 +1,7 @@
 import { normalizeTheme, type Theme } from "@/lib/theme";
 import defaultTheme from "./default.json";
 import novaDark from "./nova-dark.json";
+import novaPsycho from "./nova-psycho.json";
 
 /**
  * רישום הערכות של המערכת.
@@ -12,7 +13,9 @@ import novaDark from "./nova-dark.json";
  * כל ערכה עוברת normalizeTheme — כך שקובץ ערכה ישן (מלפני שלב
  * האפקטים) ממשיך לטעון ולהיראות בדיוק כמו שהיה, בלי לשבור בנייה.
  */
-export const themes: Theme[] = [defaultTheme as Theme, novaDark as Theme].map(normalizeTheme);
+export const themes: Theme[] = [defaultTheme as Theme, novaDark as Theme, novaPsycho as Theme].map(
+  normalizeTheme
+);
 
 export const defaultThemeId = "default";
 

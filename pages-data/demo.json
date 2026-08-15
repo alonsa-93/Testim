@@ -16,7 +16,7 @@
     { "id": "steps-1", "type": "steps", "content": {} },
     { "id": "statement-1", "type": "statement", "content": {} },
     { "id": "testimonials-1", "type": "testimonials", "content": {} },
-    { "id": "pricing-1", "type": "pricing", "content": {} },
+    { "id": "pricing-1", "type": "pricing", "content": { "featuredFx": "beam" } },
     { "id": "faq-1", "type": "faq", "content": {} },
     { "id": "leadForm-1", "type": "leadForm", "content": {} },
     { "id": "cta-1", "type": "cta", "content": {} },
