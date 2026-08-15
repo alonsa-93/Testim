@@ -70,6 +70,21 @@
  * שה-selector מפסיק להתאים (data-inview מתווסף) האלמנט חוזר למצב
  * הבסיס שלו בטרנזישן חלק. אי אפשר להישאר "תקוע בלתי-נראה".
  */
+
+/**
+ * שלב ב' — תיקון באג אמיתי שהתגלה ב-QA ויזואלי: SplitWords מוסיף
+ * רווח בסוף הטקסט של כל מילה (למעט האחרונה), אבל display:inline-block
+ * עם white-space:normal (ברירת המחדל) גוזם רווח מסוף תוכן של אלמנט
+ * inline — כך שהמילים נדבקות זו לזו בלי רווח נראה לעין, גם שהתוכן
+ * הטקסטואלי תקין. white-space:pre משמר את הרווח פיזית. חייב לחיות
+ * *מחוץ* למדיה-קוורי של reduced-motion (בניגוד לשאר כללי הסטאגר
+ * למטה) כי זו בעיית פריסה בסיסית, לא תנועה — צריכה לחול על כולם.
+ */
+.split-word {
+  display: inline-block;
+  white-space: pre;
+}
+
 @media (prefers-reduced-motion: no-preference) {
   /* מצב מוסתר בסיסי: שקיפות בלבד. word-stagger מוחרג — שם המכל עצמו
      תמיד גלוי, וההסתרה קורית ברמת כל מילה (.split-word) בנפרד */
@@ -111,7 +126,6 @@
   }
 
   .split-word {
-    display: inline-block;
     transition-property: opacity, translate, filter;
     transition-duration: var(--anim-duration, var(--ds-anim-duration, 500ms));
     transition-timing-function: var(--ds-ease-spring, cubic-bezier(.22,1,.36,1));
@@ -513,6 +527,72 @@
   translate: none;
   scale: none;
   filter: none;
+}
+
+/**
+ * שלב ב' — אינטגרציית הבלוקים: תוספות CSS קטנות לבלוקים ולאפקטים
+ * שנחווטו בפועל (drawn-line בשלבי תהליך, פס נגלל עם השהיה, ברק
+ * חולף בכפתורים, ובלוק ה"הצהרה" הנגללת). לא נוגעות בכללי שלב א'.
+ */
+
+/* כפתור עם "ברק חולף" (buttonStyle="shine"): פס אלכסוני שחולף
+   בהעברת עכבר — hover חד-פעמי, לא לולאה, ולכן translate בלבד גם כאן
+   תואם את העיקרון "לולאות מאנימות רק transform/opacity" */
+.fx-btn-shine {
+  position: relative;
+  overflow: hidden;
+}
+.fx-btn-shine::after {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: -60%;
+  width: 40%;
+  background: linear-gradient(
+    120deg,
+    transparent,
+    color-mix(in srgb, white 55%, transparent),
+    transparent
+  );
+  translate: -40% 0;
+  transition: translate 0.6s var(--ds-ease-out-soft, cubic-bezier(.2,.7,.2,1));
+  pointer-events: none;
+}
+.fx-btn-shine:hover::after,
+.fx-btn-shine:focus-visible::after {
+  translate: 220% 0;
+}
+
+/* קו מצויר לשלב תהליך: הקו הקצר שמתחת לכל שלב "נמתח" בגלילה במקום
+   סתם להופיע. מצב הבסיס תמיד ברוחב מלא (2.5rem, כמו w-10 הישן) —
+   הכיווץ ל-0 קורה רק בתוך עוגת ה-reveal בת 4 השכבות (כמו שאר
+   data-animate), כך שבלי JS או עם reduced-motion הקו תמיד גלוי במלואו */
+.fx-steps-line {
+  inline-size: 2.5rem;
+  transition: inline-size 0.9s var(--ds-ease-out-soft, cubic-bezier(.2,.7,.2,1));
+}
+@media (prefers-reduced-motion: no-preference) {
+  html[data-js] [data-animate]:not([data-inview]) .fx-steps-line {
+    inline-size: 0;
+  }
+}
+
+/* פס נגלל (marquee): כפתור ההשהיה כותב data-paused על ה-viewport;
+   hover/focus-within עוצרים גם הם, בלי JS בכלל — עומד בדרישת ה-WCAG
+   2.2.2 גם למי שלא מגיע לכפתור (עצירה זמנית) וגם דרכו (עצירה קבועה) */
+.fx-marquee-viewport[data-paused] .fx-marquee-track,
+.fx-marquee-viewport:hover .fx-marquee-track,
+.fx-marquee-viewport:focus-within .fx-marquee-track {
+  animation-play-state: paused;
+}
+
+/* בלוק "הצהרה" (statement): כל מילה נדלקת לפי התקדמות הגלילה.
+   --progress (0–1) נכתב ב-rAF מה-JS של הבלוק; --n מספר המילים,
+   --i אינדקס המילה. בלי JS, --progress לא מוגדר בכלל — הנפילה
+   לברירת המחדל 1 (var(--progress,1)) משאירה את הטקסט גלוי לגמרי,
+   בלי תלות ב-reduced-motion או JS: אין כאן "מצב מוסתר" נפרד */
+.fx-statement-word {
+  opacity: clamp(0.15, calc(var(--progress, 1) * var(--n, 1) - var(--i, 0)), 1);
 }
 
 @layer base {

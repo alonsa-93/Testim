@@ -3,9 +3,16 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { IconShield, IconStar } from "@/components/icons";
-import { renderEmphasis } from "@/lib/rich-text";
+import { Reveal } from "@/components/fx/reveal";
+import { SplitWords } from "@/components/fx/split-words";
+import { SpotlightGroup } from "@/components/fx/spotlight-group";
+import { TiltCard } from "@/components/fx/tilt-card";
+import { CountUp } from "@/components/fx/count-up";
+import { ANIM_FIELDS, resolveBlockAnim, staggerChild, staggerStyle } from "@/lib/effects";
+import { cn } from "@/lib/cn";
 import type { BlockDef } from "@/lib/blocks";
 import type { BlockContent } from "@/lib/fields";
+import type { Theme } from "@/lib/theme";
 
 interface HeroContent {
   eyebrow: string;
@@ -19,6 +26,10 @@ interface HeroContent {
   quote: string;
   quoteAuthor: string;
   badge: string;
+  /** אפקט דקורטיבי מאחורי אזור הוויזואל: כבוי / ספוטלייט עוקב-סמן / הילה נעה מאחורי הכפתור */
+  fx: "none" | "spotlight" | "halo";
+  /** האם קומפוזיציית הוויזואל נוטה בעקבות הסמן (TiltCard) */
+  mockupTilt: boolean;
 }
 
 const defaults: HeroContent = {
@@ -38,16 +49,38 @@ const defaults: HeroContent = {
   quote: "ליווי צמוד מהיום הראשון. הבית יצא חלומי.",
   quoteAuthor: "מיכל ועומר, תל אביב",
   badge: "אחריות מלאה לפרויקט",
+  fx: "none",
+  mockupTilt: false,
 };
 
 function Hero({
   content,
   anchor,
+  theme,
 }: {
   content: BlockContent;
   anchor?: string;
+  theme?: Theme;
 }) {
   const c = { ...defaults, ...content } as HeroContent;
+  const anim = resolveBlockAnim(theme?.effects, content);
+  // כותרת ההירו תמיד word-stagger (עם ההגדרות/עוצמה שנפתרו) — זה מה
+  // שה-SplitWords שלה יודע לצייר; אלא אם האנימציה כבויה לגמרי
+  const headingAnim = anim ? { ...anim, type: "word-stagger" as const } : null;
+
+  const visual = (
+    <div
+      aria-hidden="true"
+      className="aspect-[4/5] w-full rounded-card bg-gradient-to-br from-primary to-primary-hover p-6 shadow-card fx-spot-border"
+    >
+      <div className="grid h-full grid-cols-2 grid-rows-3 gap-4">
+        <div className="row-span-2 rounded-field border border-on-primary/15 bg-on-primary/10" />
+        <div className="rounded-field border border-on-primary/15 bg-accent/50" />
+        <div className="rounded-field border border-on-primary/15 bg-on-primary/10" />
+        <div className="col-span-2 rounded-field border border-on-primary/15 bg-on-primary/5" />
+      </div>
+    </div>
+  );
 
   return (
     <div id={anchor ?? "top"} className="relative overflow-hidden">
@@ -63,54 +96,68 @@ function Hero({
 
       <Container className="grid items-center gap-14 py-section lg:grid-cols-2">
         <div>
-          {c.eyebrow && <Badge>{c.eyebrow}</Badge>}
-          <h1 className="mt-5 text-display text-ink">
-            {renderEmphasis(c.title)}
-          </h1>
+          {c.eyebrow && (
+            <Reveal anim={staggerChild(anim, 0)}>
+              <Badge>{c.eyebrow}</Badge>
+            </Reveal>
+          )}
+          <Reveal anim={headingAnim} className="mt-5">
+            <h1 className="text-display text-ink">
+              <SplitWords text={c.title} />
+            </h1>
+          </Reveal>
           {c.subtitle && (
-            <p className="mt-6 max-w-xl text-lead text-muted">{c.subtitle}</p>
+            <Reveal anim={staggerChild(anim, 2)}>
+              <p className="mt-6 max-w-xl text-lead text-muted">{c.subtitle}</p>
+            </Reveal>
           )}
 
-          <div className="mt-9 flex flex-wrap items-center gap-4">
-            {c.primaryCta && (
-              <Button size="lg" href={c.primaryHref}>
-                {c.primaryCta}
-              </Button>
-            )}
-            {c.secondaryCta && (
-              <Button size="lg" variant="outline" href={c.secondaryHref}>
-                {c.secondaryCta}
-              </Button>
-            )}
-          </div>
+          <Reveal anim={staggerChild(anim, 3)}>
+            <div className="mt-9 flex flex-wrap items-center gap-4">
+              {c.primaryCta && (
+                <span
+                  className={cn("inline-flex rounded-btn", c.fx === "halo" && "fx-halo")}
+                >
+                  <Button size="lg" href={c.primaryHref}>
+                    {c.primaryCta}
+                  </Button>
+                </span>
+              )}
+              {c.secondaryCta && (
+                <Button size="lg" variant="outline" href={c.secondaryHref}>
+                  {c.secondaryCta}
+                </Button>
+              )}
+            </div>
+          </Reveal>
 
           {c.stats.length > 0 && (
-            <dl className="mt-12 grid grid-cols-3 gap-6 border-t border-line pt-8">
-              {c.stats.map((s, i) => (
-                <div key={i} className="border-s-2 border-accent ps-4">
-                  <dt className="order-2 text-sm text-muted">{s.label}</dt>
-                  <dd className="font-heading text-h3 font-bold text-ink">
-                    {s.value}
-                  </dd>
-                </div>
-              ))}
-            </dl>
+            <Reveal anim={staggerChild(anim, 4)}>
+              <dl className="mt-12 grid grid-cols-3 gap-6 border-t border-line pt-8">
+                {c.stats.map((s, i) => (
+                  <div key={i} className="border-s-2 border-accent ps-4" style={staggerStyle(i)}>
+                    <dt className="order-2 text-sm text-muted">{s.label}</dt>
+                    <dd className="font-heading text-h3 font-bold text-ink">
+                      <CountUp value={s.value} />
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </Reveal>
           )}
         </div>
 
         {/* קומפוזיציה ויזואלית דקורטיבית — מחליפה תמונת הירו */}
-        <div className="relative mx-auto w-full max-w-md lg:max-w-none">
-          <div
-            aria-hidden="true"
-            className="aspect-[4/5] w-full rounded-card bg-gradient-to-br from-primary to-primary-hover p-6 shadow-card"
-          >
-            <div className="grid h-full grid-cols-2 grid-rows-3 gap-4">
-              <div className="row-span-2 rounded-field border border-on-primary/15 bg-on-primary/10" />
-              <div className="rounded-field border border-on-primary/15 bg-accent/50" />
-              <div className="rounded-field border border-on-primary/15 bg-on-primary/10" />
-              <div className="col-span-2 rounded-field border border-on-primary/15 bg-on-primary/5" />
-            </div>
-          </div>
+        <Reveal anim={staggerChild(anim, 1)} className="relative mx-auto w-full max-w-md lg:max-w-none">
+          {c.fx === "spotlight" ? (
+            <SpotlightGroup>
+              {c.mockupTilt ? <TiltCard className="rounded-card">{visual}</TiltCard> : visual}
+            </SpotlightGroup>
+          ) : c.mockupTilt ? (
+            <TiltCard className="rounded-card">{visual}</TiltCard>
+          ) : (
+            visual
+          )}
 
           {c.quote && (
             <Card className="absolute -bottom-6 -start-4 w-64 p-4 md:-start-8">
@@ -132,7 +179,7 @@ function Hero({
               <span className="text-sm font-semibold text-ink">{c.badge}</span>
             </Card>
           )}
-        </div>
+        </Reveal>
       </Container>
     </div>
   );
@@ -173,5 +220,18 @@ export const heroBlock: BlockDef = {
     { key: "quote", type: "textarea", label: "ציטוט צף" },
     { key: "quoteAuthor", type: "text", label: "מי אמר את הציטוט" },
     { key: "badge", type: "text", label: "תגית צפה עליונה" },
+    {
+      key: "fx",
+      type: "select",
+      label: "אפקט אזור הוויזואל",
+      hint: "ספוטלייט עוקב-סמן או הילה נעה מאחורי הכפתור הראשי — עדין וכבוי כברירת מחדל",
+      options: [
+        { value: "none", label: "ללא" },
+        { value: "spotlight", label: "ספוטלייט" },
+        { value: "halo", label: "הילה מאחורי הכפתור" },
+      ],
+    },
+    { key: "mockupTilt", type: "boolean", label: "קומפוזיציית הוויזואל נוטה בעקבות הסמן" },
+    ...ANIM_FIELDS,
   ],
 };

@@ -1,6 +1,9 @@
 import { Container } from "@/components/ui/section";
+import { Reveal } from "@/components/fx/reveal";
+import { ANIM_FIELDS, resolveBlockAnim, staggerChild, staggerStyle } from "@/lib/effects";
 import type { BlockDef } from "@/lib/blocks";
 import type { BlockContent } from "@/lib/fields";
+import type { Theme } from "@/lib/theme";
 
 interface LogosContent {
   title: string;
@@ -19,11 +22,14 @@ const defaults: LogosContent = {
 function Logos({
   content,
   anchor,
+  theme,
 }: {
   content: BlockContent;
   anchor?: string;
+  theme?: Theme;
 }) {
   const c = { ...defaults, ...content } as LogosContent;
+  const anim = resolveBlockAnim(theme?.effects, content);
 
   return (
     <section id={anchor ?? "logos"} className="border-y border-line bg-surface/40 py-10">
@@ -35,11 +41,15 @@ function Logos({
         )}
         <ul className="flex flex-wrap items-center justify-center gap-x-12 gap-y-5">
           {c.items.map((name, i) => (
-            <li
-              key={i}
-              className="font-heading text-xl font-bold text-muted/80"
-            >
-              {name}
+            // ה-Reveal מקנן div בתוך ה-li (לא הפוך) כדי לשמור על ul>li תקין
+            <li key={i}>
+              <Reveal
+                anim={staggerChild(anim, i)}
+                style={staggerStyle(i)}
+                className="font-heading text-xl font-bold text-muted/80"
+              >
+                {name}
+              </Reveal>
             </li>
           ))}
         </ul>
@@ -58,5 +68,6 @@ export const logosBlock: BlockDef = {
   fields: [
     { key: "title", type: "text", label: "כותרת קטנה מעל השמות" },
     { key: "items", type: "strings", label: "השמות", itemLabel: "שם" },
+    ...ANIM_FIELDS,
   ],
 };

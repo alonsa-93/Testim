@@ -1,6 +1,11 @@
 import { Section, SectionHeading } from "@/components/ui/section";
+import { Reveal } from "@/components/fx/reveal";
+import { TiltCard } from "@/components/fx/tilt-card";
+import { ANIM_FIELDS, resolveBlockAnim, staggerChild } from "@/lib/effects";
+import { cn } from "@/lib/cn";
 import type { BlockDef } from "@/lib/blocks";
 import type { BlockContent } from "@/lib/fields";
+import type { Theme } from "@/lib/theme";
 
 interface GalleryContent {
   eyebrow: string;
@@ -33,43 +38,54 @@ const placeholderStyles = [
 function Gallery({
   content,
   anchor,
+  theme,
 }: {
   content: BlockContent;
   anchor?: string;
+  theme?: Theme;
 }) {
   const c = { ...defaults, ...content } as GalleryContent;
+  const anim = resolveBlockAnim(theme?.effects, content);
+  const tilt = theme?.effects.cardStyle === "tilt";
 
   return (
     <Section id={anchor ?? "gallery"} className="bg-surface/60">
       <SectionHeading eyebrow={c.eyebrow} title={c.title} subtitle={c.subtitle} />
       <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {c.items.map((item, i) => (
-          <li key={i}>
-            <figure>
-              <div className="aspect-[4/3] overflow-hidden rounded-card border border-line shadow-card">
-                {item.imageUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element -- כתובות תמונה חופשיות מהעורך, ללא קונפיגורציית דומיינים
-                  <img
-                    src={item.imageUrl}
-                    alt={item.caption}
-                    loading="lazy"
-                    className="size-full object-cover"
-                  />
-                ) : (
-                  <div
-                    aria-hidden="true"
-                    className={`size-full ${placeholderStyles[i % placeholderStyles.length]}`}
-                  />
-                )}
-              </div>
-              {item.caption && (
-                <figcaption className="mt-3 text-sm font-medium text-muted">
-                  {item.caption}
-                </figcaption>
+        {c.items.map((item, i) => {
+          const frame = (
+            <div className={cn("ds-card aspect-[4/3] overflow-hidden rounded-card border border-line shadow-card")}>
+              {item.imageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element -- כתובות תמונה חופשיות מהעורך, ללא קונפיגורציית דומיינים
+                <img
+                  src={item.imageUrl}
+                  alt={item.caption}
+                  loading="lazy"
+                  className="size-full object-cover"
+                />
+              ) : (
+                <div
+                  aria-hidden="true"
+                  className={`size-full ${placeholderStyles[i % placeholderStyles.length]}`}
+                />
               )}
-            </figure>
-          </li>
-        ))}
+            </div>
+          );
+          return (
+            <li key={i}>
+              <Reveal anim={staggerChild(anim, i)}>
+                <figure>
+                  {tilt ? <TiltCard className="rounded-card">{frame}</TiltCard> : frame}
+                  {item.caption && (
+                    <figcaption className="mt-3 text-sm font-medium text-muted">
+                      {item.caption}
+                    </figcaption>
+                  )}
+                </figure>
+              </Reveal>
+            </li>
+          );
+        })}
       </ul>
     </Section>
   );
@@ -102,5 +118,6 @@ export const galleryBlock: BlockDef = {
         { key: "caption", type: "text", label: "כיתוב" },
       ],
     },
+    ...ANIM_FIELDS,
   ],
 };

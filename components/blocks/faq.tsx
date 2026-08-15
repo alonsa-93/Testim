@@ -1,7 +1,10 @@
 import { Section, SectionHeading } from "@/components/ui/section";
 import { IconChevronDown } from "@/components/icons";
+import { Reveal } from "@/components/fx/reveal";
+import { ANIM_FIELDS, resolveBlockAnim, staggerChild } from "@/lib/effects";
 import type { BlockDef } from "@/lib/blocks";
 import type { BlockContent } from "@/lib/fields";
+import type { Theme } from "@/lib/theme";
 
 interface FaqContent {
   eyebrow: string;
@@ -41,24 +44,29 @@ const defaults: FaqContent = {
 function Faq({
   content,
   anchor,
+  theme,
 }: {
   content: BlockContent;
   anchor?: string;
+  theme?: Theme;
 }) {
   const c = { ...defaults, ...content } as FaqContent;
+  const anim = resolveBlockAnim(theme?.effects, content);
 
   return (
     <Section id={anchor ?? "faq"} className="bg-surface/60">
       <SectionHeading eyebrow={c.eyebrow} title={c.title} subtitle={c.subtitle} />
       <div className="mx-auto max-w-3xl">
         {c.items.map((f, i) => (
-          <details key={i} name="faq" className="group border-b border-line py-5">
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-start font-semibold text-ink [&::-webkit-details-marker]:hidden">
-              {f.q}
-              <IconChevronDown className="size-5 shrink-0 text-muted transition-transform duration-200 group-open:rotate-180" />
-            </summary>
-            <p className="mt-3 pe-9 text-muted">{f.a}</p>
-          </details>
+          <Reveal key={i} anim={staggerChild(anim, i)}>
+            <details name="faq" className="group border-b border-line py-5">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-start font-semibold text-ink [&::-webkit-details-marker]:hidden">
+                {f.q}
+                <IconChevronDown className="size-5 shrink-0 text-muted transition-transform duration-200 group-open:rotate-180" />
+              </summary>
+              <p className="mt-3 pe-9 text-muted">{f.a}</p>
+            </details>
+          </Reveal>
         ))}
       </div>
     </Section>
@@ -87,5 +95,6 @@ export const faqBlock: BlockDef = {
         { key: "a", type: "textarea", label: "התשובה" },
       ],
     },
+    ...ANIM_FIELDS,
   ],
 };

@@ -3,8 +3,13 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { IconCheck } from "@/components/icons";
+import { Reveal } from "@/components/fx/reveal";
+import { TiltCard } from "@/components/fx/tilt-card";
+import { ANIM_FIELDS, resolveBlockAnim, staggerChild } from "@/lib/effects";
+import { cn } from "@/lib/cn";
 import type { BlockDef } from "@/lib/blocks";
 import type { BlockContent } from "@/lib/fields";
+import type { Theme } from "@/lib/theme";
 
 interface PricingContent {
   eyebrow: string;
@@ -22,6 +27,8 @@ interface PricingContent {
     ctaHref: string;
   }>;
   note: string;
+  /** מסגרת-אור נעה (fx-beam) על המסלול המודגש בלבד — כבוי כברירת מחדל */
+  featuredFx: "none" | "beam";
 }
 
 const defaults: PricingContent = {
@@ -79,62 +86,78 @@ const defaults: PricingContent = {
     },
   ],
   note: "המחירים כוללים מע״מ. ניתן לשלם בפריסה של עד 6 תשלומים.",
+  featuredFx: "none",
 };
 
 function Pricing({
   content,
   anchor,
+  theme,
 }: {
   content: BlockContent;
   anchor?: string;
+  theme?: Theme;
 }) {
   const c = { ...defaults, ...content } as PricingContent;
+  const anim = resolveBlockAnim(theme?.effects, content);
+  const tilt = theme?.effects.cardStyle === "tilt";
 
   return (
     <Section id={anchor ?? "pricing"}>
       <SectionHeading eyebrow={c.eyebrow} title={c.title} subtitle={c.subtitle} />
       <div className="grid items-start gap-6 lg:grid-cols-3">
-        {c.plans.map((p, i) => (
-          <Card
-            key={i}
-            className={
-              p.highlighted
-                ? "relative border-primary p-8 ring-1 ring-primary"
-                : "p-8"
-            }
-          >
-            {p.highlighted && c.highlightLabel && (
-              <Badge variant="accent" className="absolute -top-3.5 start-6">
-                {c.highlightLabel}
-              </Badge>
-            )}
-            <h3 className="text-h3 text-ink">{p.name}</h3>
-            <p className="mt-1 text-sm text-muted">{p.description}</p>
-            <p className="mt-5 font-heading text-h2 font-bold text-ink">
-              {p.price}
-            </p>
-            <p className="text-sm text-muted">{p.priceNote}</p>
+        {c.plans.map((p, i) => {
+          const beam = p.highlighted && c.featuredFx === "beam";
+          const card = (
+            <Card
+              className={cn(
+                p.highlighted ? "relative border-primary p-8 ring-1 ring-primary" : "p-8",
+                beam && "fx-beam"
+              )}
+            >
+              {beam && <span aria-hidden="true" className="fx-beam-dot" />}
+              {p.highlighted && c.highlightLabel && (
+                <Badge variant="accent" className="absolute -top-3.5 start-6">
+                  {c.highlightLabel}
+                </Badge>
+              )}
+              <h3 className="text-h3 text-ink">{p.name}</h3>
+              <p className="mt-1 text-sm text-muted">{p.description}</p>
+              <p className="mt-5 font-heading text-h2 font-bold text-ink">
+                {p.price}
+              </p>
+              <p className="text-sm text-muted">{p.priceNote}</p>
 
-            <ul className="mt-6 space-y-3 border-t border-line pt-6">
-              {p.features.map((f, j) => (
-                <li key={j} className="flex items-start gap-2.5">
-                  <IconCheck className="mt-1 size-4 shrink-0 text-primary" />
-                  <span className="text-sm text-ink">{f}</span>
-                </li>
-              ))}
-            </ul>
+              <ul className="mt-6 space-y-3 border-t border-line pt-6">
+                {p.features.map((f, j) => (
+                  <li key={j} className="flex items-start gap-2.5">
+                    <IconCheck className="mt-1 size-4 shrink-0 text-primary" />
+                    <span className="text-sm text-ink">{f}</span>
+                  </li>
+                ))}
+              </ul>
 
-            <div className="mt-8">
-              <Button
-                href={p.ctaHref}
-                variant={p.highlighted ? "primary" : "outline"}
-                className="w-full"
-              >
-                {p.cta}
-              </Button>
-            </div>
-          </Card>
-        ))}
+              <div className="mt-8">
+                <Button
+                  href={p.ctaHref}
+                  variant={p.highlighted ? "primary" : "outline"}
+                  className={cn(
+                    "w-full",
+                    p.highlighted && theme?.effects.buttonStyle === "push" && "fx-btn-3d",
+                    p.highlighted && theme?.effects.buttonStyle === "shine" && "fx-btn-shine"
+                  )}
+                >
+                  {p.cta}
+                </Button>
+              </div>
+            </Card>
+          );
+          return (
+            <Reveal key={i} anim={staggerChild(anim, i)}>
+              {tilt ? <TiltCard className="rounded-card">{card}</TiltCard> : card}
+            </Reveal>
+          );
+        })}
       </div>
       {c.note && (
         <p className="mt-8 text-center text-sm text-muted">{c.note}</p>
@@ -173,5 +196,16 @@ export const pricingBlock: BlockDef = {
       ],
     },
     { key: "note", type: "text", label: "הערה בתחתית" },
+    {
+      key: "featuredFx",
+      type: "select",
+      label: "אפקט על המסלול המודגש",
+      hint: "מסגרת-אור נעה סביב המסלול עם highlighted=כן בלבד",
+      options: [
+        { value: "none", label: "ללא" },
+        { value: "beam", label: "מסגרת-אור נעה" },
+      ],
+    },
+    ...ANIM_FIELDS,
   ],
 };

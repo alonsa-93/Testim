@@ -7,34 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Field, Input, Textarea } from "@/components/ui/field";
 import { IconCheck, IconMail, IconMapPin, IconPhone } from "@/components/icons";
-import type { BlockDef } from "@/lib/blocks";
+import { Reveal } from "@/components/fx/reveal";
+import { resolveBlockAnim, staggerChild } from "@/lib/effects";
+import { leadFormDefaults, type LeadFormContent } from "./lead-form.meta";
 import type { BlockContent } from "@/lib/fields";
-
-interface LeadFormContent {
-  eyebrow: string;
-  title: string;
-  text: string;
-  phone: string;
-  email: string;
-  address: string;
-  submitLabel: string;
-  privacyNote: string;
-  successTitle: string;
-  successText: string;
-}
-
-const defaults: LeadFormContent = {
-  eyebrow: "מדברים?",
-  title: "הצעד הראשון הוא שיחה אחת",
-  text: "השאירו פרטים ונחזור אליכם עד יום העסקים הבא לשיחת היכרות קצרה — בלי התחייבות ובלי לחץ מכירתי.",
-  phone: "050-000-0000",
-  email: "hello@studio-alon.co.il",
-  address: "שדרות רוטשילד 1, תל אביב",
-  submitLabel: "שליחה — נחזור אליכם בהקדם",
-  privacyNote: "הפרטים ישמשו לחזרה אליכם בלבד ולא יועברו לגורם שלישי.",
-  successTitle: "תודה! הפנייה התקבלה",
-  successText: "נחזור אליכם עד יום העסקים הבא. בינתיים אפשר להציץ בשאלות הנפוצות.",
-};
+import type { Theme } from "@/lib/theme";
 
 type FormErrors = Partial<Record<"name" | "phone" | "email", string>>;
 
@@ -52,14 +29,21 @@ function validate(data: FormData): FormErrors {
   return errors;
 }
 
-function LeadForm({
+/**
+ * הקובץ הזה מייצא *רק* את הרכיב — ה-BlockDef חי ב-lead-form.meta.ts
+ * הלא-"use client", ומורכב יחד ב-registry.ts. ראו הערה ב-navbar.meta.ts.
+ */
+export function LeadForm({
   content,
   anchor,
+  theme,
 }: {
   content: BlockContent;
   anchor?: string;
+  theme?: Theme;
 }) {
-  const c = { ...defaults, ...content } as LeadFormContent;
+  const c = { ...leadFormDefaults, ...content } as LeadFormContent;
+  const anim = resolveBlockAnim(theme?.effects, content);
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitted, setSubmitted] = useState(false);
 
@@ -84,7 +68,7 @@ function LeadForm({
   return (
     <Section id={anchor ?? "contact"}>
       <div className="grid gap-14 lg:grid-cols-2">
-        <div>
+        <Reveal anim={staggerChild(anim, 0)}>
           {c.eyebrow && <Badge>{c.eyebrow}</Badge>}
           <h2 className="mt-3 text-h2 text-ink">{c.title}</h2>
           {c.text && <p className="mt-5 max-w-lg text-lead text-muted">{c.text}</p>}
@@ -136,115 +120,95 @@ function LeadForm({
               </li>
             )}
           </ul>
-        </div>
+        </Reveal>
 
-        <Card className="p-6 md:p-9">
-          {submitted ? (
-            <div
-              role="status"
-              className="flex h-full min-h-72 flex-col items-center justify-center text-center"
-            >
-              <span className="flex size-14 items-center justify-center rounded-full bg-primary text-on-primary">
-                <IconCheck className="size-7" />
-              </span>
-              <h3 className="mt-5 text-h3 text-ink">{c.successTitle}</h3>
-              <p className="mt-2 max-w-xs text-muted">{c.successText}</p>
-              <Button
-                variant="ghost"
-                className="mt-6"
-                onClick={() => setSubmitted(false)}
+        <Reveal anim={staggerChild(anim, 1)}>
+          <Card className="p-6 md:p-9">
+            {submitted ? (
+              <div
+                role="status"
+                className="flex h-full min-h-72 flex-col items-center justify-center text-center"
               >
-                שליחת פנייה נוספת
-              </Button>
-            </div>
-          ) : (
-            <form onSubmit={onSubmit} noValidate className="space-y-5">
-              <div className="grid gap-5 sm:grid-cols-2">
-                <Field id="lead-name" label="שם מלא" required error={errors.name}>
+                <span className="flex size-14 items-center justify-center rounded-full bg-primary text-on-primary">
+                  <IconCheck className="size-7" />
+                </span>
+                <h3 className="mt-5 text-h3 text-ink">{c.successTitle}</h3>
+                <p className="mt-2 max-w-xs text-muted">{c.successText}</p>
+                <Button
+                  variant="ghost"
+                  className="mt-6"
+                  onClick={() => setSubmitted(false)}
+                >
+                  שליחת פנייה נוספת
+                </Button>
+              </div>
+            ) : (
+              <form onSubmit={onSubmit} noValidate className="space-y-5">
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <Field id="lead-name" label="שם מלא" required error={errors.name}>
+                    <Input
+                      id="lead-name"
+                      name="name"
+                      autoComplete="name"
+                      placeholder="ישראל ישראלי"
+                      aria-invalid={Boolean(errors.name)}
+                      aria-describedby={errors.name ? "lead-name-error" : undefined}
+                    />
+                  </Field>
+                  <Field id="lead-phone" label="טלפון" required error={errors.phone}>
+                    <Input
+                      id="lead-phone"
+                      name="phone"
+                      type="tel"
+                      autoComplete="tel"
+                      placeholder="050-1234567"
+                      aria-invalid={Boolean(errors.phone)}
+                      aria-describedby={errors.phone ? "lead-phone-error" : undefined}
+                    />
+                  </Field>
+                </div>
+                <Field id="lead-email" label="אימייל" error={errors.email}>
                   <Input
-                    id="lead-name"
-                    name="name"
-                    autoComplete="name"
-                    placeholder="ישראל ישראלי"
-                    aria-invalid={Boolean(errors.name)}
-                    aria-describedby={errors.name ? "lead-name-error" : undefined}
+                    id="lead-email"
+                    name="email"
+                    type="email"
+                    autoComplete="email"
+                    placeholder="you@example.com"
+                    aria-invalid={Boolean(errors.email)}
+                    aria-describedby={errors.email ? "lead-email-error" : undefined}
                   />
                 </Field>
-                <Field id="lead-phone" label="טלפון" required error={errors.phone}>
-                  <Input
-                    id="lead-phone"
-                    name="phone"
-                    type="tel"
-                    autoComplete="tel"
-                    placeholder="050-1234567"
-                    aria-invalid={Boolean(errors.phone)}
-                    aria-describedby={errors.phone ? "lead-phone-error" : undefined}
+                <Field id="lead-message" label="ספרו לנו על הפרויקט">
+                  <Textarea
+                    id="lead-message"
+                    name="message"
+                    placeholder="דירת 4 חדרים ברמת גן, מתלבטים בין שיפוץ מלא לחלקי..."
                   />
                 </Field>
-              </div>
-              <Field id="lead-email" label="אימייל" error={errors.email}>
-                <Input
-                  id="lead-email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  placeholder="you@example.com"
-                  aria-invalid={Boolean(errors.email)}
-                  aria-describedby={errors.email ? "lead-email-error" : undefined}
-                />
-              </Field>
-              <Field id="lead-message" label="ספרו לנו על הפרויקט">
-                <Textarea
-                  id="lead-message"
-                  name="message"
-                  placeholder="דירת 4 חדרים ברמת גן, מתלבטים בין שיפוץ מלא לחלקי..."
-                />
-              </Field>
 
-              {/* Honeypot — מוסתר מבני אדם ומקוראי מסך */}
-              <div className="hidden" aria-hidden="true">
-                <label htmlFor="lead-company">חברה</label>
-                <input
-                  id="lead-company"
-                  name="company"
-                  type="text"
-                  tabIndex={-1}
-                  autoComplete="off"
-                />
-              </div>
+                {/* Honeypot — מוסתר מבני אדם ומקוראי מסך */}
+                <div className="hidden" aria-hidden="true">
+                  <label htmlFor="lead-company">חברה</label>
+                  <input
+                    id="lead-company"
+                    name="company"
+                    type="text"
+                    tabIndex={-1}
+                    autoComplete="off"
+                  />
+                </div>
 
-              <Button type="submit" size="lg" className="w-full">
-                {c.submitLabel}
-              </Button>
-              {c.privacyNote && (
-                <p className="text-center text-xs text-muted">{c.privacyNote}</p>
-              )}
-            </form>
-          )}
-        </Card>
+                <Button type="submit" size="lg" className="w-full">
+                  {c.submitLabel}
+                </Button>
+                {c.privacyNote && (
+                  <p className="text-center text-xs text-muted">{c.privacyNote}</p>
+                )}
+              </form>
+            )}
+          </Card>
+        </Reveal>
       </div>
     </Section>
   );
 }
-
-export const leadFormBlock: BlockDef = {
-  type: "leadForm",
-  label: "טופס לידים",
-  description: "טופס יצירת קשר עם ולידציה בעברית, לצד פרטי התקשרות",
-  component: LeadForm,
-  anchor: "contact",
-  defaults: defaults as unknown as BlockContent,
-  singleton: true,
-  fields: [
-    { key: "eyebrow", type: "text", label: "כותרת-על קטנה" },
-    { key: "title", type: "text", label: "כותרת" },
-    { key: "text", type: "textarea", label: "משפט הסבר" },
-    { key: "phone", type: "text", label: "טלפון" },
-    { key: "email", type: "text", label: "אימייל" },
-    { key: "address", type: "text", label: "כתובת" },
-    { key: "submitLabel", type: "text", label: "כפתור השליחה" },
-    { key: "privacyNote", type: "text", label: "הערת פרטיות מתחת לכפתור" },
-    { key: "successTitle", type: "text", label: "הודעת הצלחה — כותרת" },
-    { key: "successText", type: "textarea", label: "הודעת הצלחה — טקסט" },
-  ],
-};

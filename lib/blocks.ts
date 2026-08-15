@@ -1,5 +1,6 @@
 import type { ComponentType } from "react";
 import type { BlockContent, FieldDef } from "./fields";
+import type { Theme } from "./theme";
 
 /**
  * חוזה של בלוק במערכת.
@@ -12,7 +13,14 @@ export interface BlockDef {
   /** שם הבלוק כפי שמוצג בסטודיו */
   label: string;
   description: string;
-  component: ComponentType<{ content: BlockContent; anchor?: string }>;
+  /**
+   * theme אופציונלי (שלב ב'): PageRenderer מעביר את הערכה הפעילה לכל
+   * בלוק כדי שיוכל לפתור ברירות מחדל של אנימציה/כרטיסים/כפתורים
+   * (resolveBlockAnim, cardStyle, buttonStyle) בלי prop-drilling נוסף.
+   * בלוקים שלא זקוקים לעיצוב תלוי-ערכה (למשל navbar, whatsapp) פשוט
+   * לא קוראים אותו — אותו דפוס כמו anchor האופציונלי הקיים.
+   */
+  component: ComponentType<{ content: BlockContent; anchor?: string; theme?: Theme }>;
   /**
    * עוגן הניווט הקנוני של הבלוק (#features וכד').
    * ה-PageRenderer מעביר אותו למופע הראשון כמו שהוא, ולמופעים

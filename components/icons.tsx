@@ -168,3 +168,22 @@ export function IconX(props: SVGProps<SVGSVGElement>) {
     </Icon>
   );
 }
+
+/** כפתור השהיה — לפקד ה-WCAG 2.2.2 של בלוק הפס הנגלל (marquee) */
+export function IconPause(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props} fill="currentColor" stroke="none">
+      <rect x="6" y="5" width="4" height="14" rx="1" />
+      <rect x="14" y="5" width="4" height="14" rx="1" />
+    </Icon>
+  );
+}
+
+/** כפתור המשך — המצב השני של אותו פקד השהיה */
+export function IconPlay(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props} fill="currentColor" stroke="none">
+      <path d="M7 5v14l12-7L7 5z" />
+    </Icon>
+  );
+}

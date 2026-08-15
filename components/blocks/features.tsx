@@ -1,8 +1,12 @@
 import { Section, SectionHeading } from "@/components/ui/section";
 import { Card } from "@/components/ui/card";
 import { getIcon } from "@/components/icon-registry";
+import { Reveal } from "@/components/fx/reveal";
+import { TiltCard } from "@/components/fx/tilt-card";
+import { ANIM_FIELDS, resolveBlockAnim, staggerChild } from "@/lib/effects";
 import type { BlockDef } from "@/lib/blocks";
 import type { BlockContent } from "@/lib/fields";
+import type { Theme } from "@/lib/theme";
 
 interface FeaturesContent {
   eyebrow: string;
@@ -52,11 +56,15 @@ const defaults: FeaturesContent = {
 function Features({
   content,
   anchor,
+  theme,
 }: {
   content: BlockContent;
   anchor?: string;
+  theme?: Theme;
 }) {
   const c = { ...defaults, ...content } as FeaturesContent;
+  const anim = resolveBlockAnim(theme?.effects, content);
+  const tilt = theme?.effects.cardStyle === "tilt";
 
   return (
     <Section id={anchor ?? "features"} className="bg-surface/60">
@@ -64,14 +72,22 @@ function Features({
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {c.items.map((f, i) => {
           const Icon = getIcon(f.icon);
-          return (
-            <Card key={i} className="p-7">
+          const card = (
+            // h-full: שומר על שורת כרטיסים שווה-גובה — ה-Reveal (ולא הכרטיס)
+            // הוא עכשיו הפריט הישיר של ה-grid, אז ה-stretch האוטומטי שלו
+            // מגיע ל-Reveal; h-full מעביר את זה הלאה לכרטיס עצמו
+            <Card className="h-full p-7">
               <div className="flex size-12 items-center justify-center rounded-field bg-primary/10 text-primary">
                 <Icon className="size-6" />
               </div>
               <h3 className="mt-5 text-h3 text-ink">{f.title}</h3>
               <p className="mt-2.5 text-muted">{f.text}</p>
             </Card>
+          );
+          return (
+            <Reveal key={i} anim={staggerChild(anim, i)}>
+              {tilt ? <TiltCard className="rounded-card">{card}</TiltCard> : card}
+            </Reveal>
           );
         })}
       </div>
@@ -102,5 +118,6 @@ export const featuresBlock: BlockDef = {
         { key: "text", type: "textarea", label: "תיאור" },
       ],
     },
+    ...ANIM_FIELDS,
   ],
 };

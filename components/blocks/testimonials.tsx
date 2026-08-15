@@ -1,8 +1,12 @@
 import { Section, SectionHeading } from "@/components/ui/section";
 import { Card } from "@/components/ui/card";
 import { IconStar } from "@/components/icons";
+import { Reveal } from "@/components/fx/reveal";
+import { TiltCard } from "@/components/fx/tilt-card";
+import { ANIM_FIELDS, resolveBlockAnim, staggerChild } from "@/lib/effects";
 import type { BlockDef } from "@/lib/blocks";
 import type { BlockContent } from "@/lib/fields";
+import type { Theme } from "@/lib/theme";
 
 interface TestimonialsContent {
   eyebrow: string;
@@ -50,38 +54,49 @@ function initials(name: string): string {
 function Testimonials({
   content,
   anchor,
+  theme,
 }: {
   content: BlockContent;
   anchor?: string;
+  theme?: Theme;
 }) {
   const c = { ...defaults, ...content } as TestimonialsContent;
+  const anim = resolveBlockAnim(theme?.effects, content);
+  const tilt = theme?.effects.cardStyle === "tilt";
 
   return (
     <Section id={anchor ?? "testimonials"} className="bg-surface/60">
       <SectionHeading eyebrow={c.eyebrow} title={c.title} subtitle={c.subtitle} />
       <div className="grid gap-6 md:grid-cols-3">
-        {c.items.map((t, i) => (
-          <Card key={i} className="flex flex-col p-7">
-            <div className="flex gap-1 text-accent" aria-hidden="true">
-              {Array.from({ length: 5 }).map((_, j) => (
-                <IconStar key={j} className="size-4" />
-              ))}
-            </div>
-            <blockquote className="mt-4 flex-1 text-ink">״{t.quote}״</blockquote>
-            <footer className="mt-6 flex items-center gap-3 border-t border-line pt-5">
-              <span
-                aria-hidden="true"
-                className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary font-bold text-on-primary"
-              >
-                {initials(t.name)}
-              </span>
-              <div>
-                <p className="font-semibold text-ink">{t.name}</p>
-                <p className="text-sm text-muted">{t.role}</p>
+        {c.items.map((t, i) => {
+          const card = (
+            <Card className="flex h-full flex-col p-7">
+              <div className="flex gap-1 text-accent" aria-hidden="true">
+                {Array.from({ length: 5 }).map((_, j) => (
+                  <IconStar key={j} className="size-4" />
+                ))}
               </div>
-            </footer>
-          </Card>
-        ))}
+              <blockquote className="mt-4 flex-1 text-ink">״{t.quote}״</blockquote>
+              <footer className="mt-6 flex items-center gap-3 border-t border-line pt-5">
+                <span
+                  aria-hidden="true"
+                  className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary font-bold text-on-primary"
+                >
+                  {initials(t.name)}
+                </span>
+                <div>
+                  <p className="font-semibold text-ink">{t.name}</p>
+                  <p className="text-sm text-muted">{t.role}</p>
+                </div>
+              </footer>
+            </Card>
+          );
+          return (
+            <Reveal key={i} anim={staggerChild(anim, i)}>
+              {tilt ? <TiltCard className="h-full rounded-card">{card}</TiltCard> : card}
+            </Reveal>
+          );
+        })}
       </div>
     </Section>
   );
@@ -110,5 +125,6 @@ export const testimonialsBlock: BlockDef = {
         { key: "role", type: "text", label: "פרטי הפרויקט" },
       ],
     },
+    ...ANIM_FIELDS,
   ],
 };

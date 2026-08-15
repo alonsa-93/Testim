@@ -1,6 +1,9 @@
 import { Section, SectionHeading } from "@/components/ui/section";
+import { Reveal } from "@/components/fx/reveal";
+import { ANIM_FIELDS, resolveBlockAnim, staggerChild } from "@/lib/effects";
 import type { BlockDef } from "@/lib/blocks";
 import type { BlockContent } from "@/lib/fields";
+import type { Theme } from "@/lib/theme";
 
 interface StepsContent {
   eyebrow: string;
@@ -36,11 +39,14 @@ const defaults: StepsContent = {
 function Steps({
   content,
   anchor,
+  theme,
 }: {
   content: BlockContent;
   anchor?: string;
+  theme?: Theme;
 }) {
   const c = { ...defaults, ...content } as StepsContent;
+  const anim = resolveBlockAnim(theme?.effects, content);
 
   return (
     <Section id={anchor ?? "steps"}>
@@ -48,16 +54,16 @@ function Steps({
       <ol className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
         {c.items.map((s, i) => (
           <li key={i} className="relative border-t-2 border-line pt-6">
-            {/* הקו המודגש מסמן את השלב שהושלם ויזואלית */}
-            <span
-              aria-hidden="true"
-              className="absolute -top-0.5 start-0 h-0.5 w-10 bg-accent"
-            />
-            <span className="font-heading text-h3 font-bold text-accent">
-              {String(i + 1).padStart(2, "0")}
-            </span>
-            <h3 className="mt-2 text-h3 text-ink">{s.title}</h3>
-            <p className="mt-2 text-muted">{s.text}</p>
+            <Reveal anim={staggerChild(anim, i)}>
+              {/* "קו מצויר": נמתח מ-0 לרוחבו המלא כשהשלב נכנס לתצוגה
+                  (fx-steps-line ב-globals.css) במקום סתם להופיע */}
+              <span aria-hidden="true" className="fx-steps-line absolute -top-0.5 start-0 h-0.5 bg-accent" />
+              <span className="font-heading text-h3 font-bold text-accent">
+                {String(i + 1).padStart(2, "0")}
+              </span>
+              <h3 className="mt-2 text-h3 text-ink">{s.title}</h3>
+              <p className="mt-2 text-muted">{s.text}</p>
+            </Reveal>
           </li>
         ))}
       </ol>
@@ -87,5 +93,6 @@ export const stepsBlock: BlockDef = {
         { key: "text", type: "textarea", label: "תיאור" },
       ],
     },
+    ...ANIM_FIELDS,
   ],
 };

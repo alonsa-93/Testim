@@ -4,31 +4,16 @@ import { useState } from "react";
 import { Container } from "@/components/ui/section";
 import { Button } from "@/components/ui/button";
 import { IconMenu, IconX } from "@/components/icons";
-import type { BlockDef } from "@/lib/blocks";
+import { navbarDefaults, type NavbarContent } from "./navbar.meta";
 import type { BlockContent } from "@/lib/fields";
 
-interface NavbarContent {
-  brand: string;
-  links: Array<{ label: string; href: string }>;
-  ctaLabel: string;
-  ctaHref: string;
-}
-
-const defaults: NavbarContent = {
-  brand: "סטודיו אלון",
-  links: [
-    { label: "שירותים", href: "#features" },
-    { label: "הגישה שלנו", href: "#about" },
-    { label: "לקוחות מספרים", href: "#testimonials" },
-    { label: "מסלולים", href: "#pricing" },
-    { label: "שאלות נפוצות", href: "#faq" },
-  ],
-  ctaLabel: "לתיאום ייעוץ",
-  ctaHref: "#contact",
-};
-
-function Navbar({ content }: { content: BlockContent }) {
-  const c = { ...defaults, ...content } as NavbarContent;
+/**
+ * הקובץ הזה מייצא *רק* את הרכיב — ה-BlockDef (סוג/ברירות מחדל/שדות)
+ * חי ב-navbar.meta.ts הלא-"use client", ומורכב יחד ב-registry.ts.
+ * ראו את ההערה המפורטת ב-navbar.meta.ts.
+ */
+export function Navbar({ content }: { content: BlockContent }) {
+  const c = { ...navbarDefaults, ...content } as NavbarContent;
   const [open, setOpen] = useState(false);
 
   return (
@@ -108,33 +93,3 @@ function Navbar({ content }: { content: BlockContent }) {
     </header>
   );
 }
-
-export const navbarBlock: BlockDef = {
-  type: "navbar",
-  label: "סרגל ניווט עליון",
-  description: "לוגו טקסטואלי, קישורי עוגן וכפתור פעולה — נדבק לראש העמוד",
-  component: Navbar,
-  defaults: defaults as unknown as BlockContent,
-  singleton: true,
-  fields: [
-    { key: "brand", type: "text", label: "שם העסק" },
-    {
-      key: "links",
-      type: "list",
-      label: "קישורי ניווט",
-      itemLabel: "קישור",
-      titleKey: "label",
-      fields: [
-        { key: "label", type: "text", label: "טקסט" },
-        {
-          key: "href",
-          type: "text",
-          label: "יעד",
-          hint: "עוגן לסקשן בדף, למשל ‎#pricing",
-        },
-      ],
-    },
-    { key: "ctaLabel", type: "text", label: "כפתור — טקסט" },
-    { key: "ctaHref", type: "text", label: "כפתור — קישור" },
-  ],
-};

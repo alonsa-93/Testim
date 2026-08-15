@@ -602,7 +602,7 @@ export function StudioApp() {
                   להיצמד למסגרת התצוגה במקום לחלון של הסטודיו */}
               <ThemeScope theme={theme} className="[transform:translateZ(0)]">
                 {page.blocks.length > 0 ? (
-                  <PageRenderer page={page} />
+                  <PageRenderer page={page} theme={theme} />
                 ) : (
                   <p className="p-20 text-center text-muted">
                     הדף ריק. הוסיפו בלוק ראשון מהפאנל.

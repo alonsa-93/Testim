@@ -1,6 +1,9 @@
 import { Section, SectionHeading } from "@/components/ui/section";
+import { Reveal } from "@/components/fx/reveal";
+import { ANIM_FIELDS, resolveBlockAnim } from "@/lib/effects";
 import type { BlockDef } from "@/lib/blocks";
 import type { BlockContent } from "@/lib/fields";
+import type { Theme } from "@/lib/theme";
 
 interface VideoContent {
   eyebrow: string;
@@ -35,19 +38,22 @@ function toEmbedUrl(url: string): string | null {
 function Video({
   content,
   anchor,
+  theme,
 }: {
   content: BlockContent;
   anchor?: string;
+  theme?: Theme;
 }) {
   const c = { ...defaults, ...content } as VideoContent;
   const embedUrl = toEmbedUrl(c.videoUrl);
+  const anim = resolveBlockAnim(theme?.effects, content);
 
   return (
     <Section id={anchor ?? "video"}>
       <SectionHeading eyebrow={c.eyebrow} title={c.title} subtitle={c.subtitle} />
-      <div className="mx-auto max-w-3xl">
+      <Reveal anim={anim} className="mx-auto max-w-3xl">
         {embedUrl ? (
-          <div className="aspect-video overflow-hidden rounded-card border border-line shadow-card">
+          <div className="ds-card aspect-video overflow-hidden rounded-card border border-line shadow-card">
             <iframe
               src={embedUrl}
               title={c.videoTitle || "סרטון"}
@@ -66,7 +72,7 @@ function Video({
             </p>
           </div>
         )}
-      </div>
+      </Reveal>
     </Section>
   );
 }
@@ -89,5 +95,6 @@ export const videoBlock: BlockDef = {
       hint: "קישור רגיל, למשל https://www.youtube.com/watch?v=XXXX או https://vimeo.com/123456",
     },
     { key: "videoTitle", type: "text", label: "שם הסרטון (לנגישות)" },
+    ...ANIM_FIELDS,
   ],
 };

@@ -1,4 +1,5 @@
 import type { Page, PageBlockInstance } from "@/lib/page";
+import type { Theme } from "@/lib/theme";
 import { getBlockDef, PINNED_BOTTOM, PINNED_TOP } from "@/components/blocks/registry";
 
 /**
@@ -8,8 +9,10 @@ import { getBlockDef, PINNED_BOTTOM, PINNED_TOP } from "@/components/blocks/regi
  * עוגני סקשנים: המופע הראשון של בלוק מקבל את העוגן הקנוני שלו
  * (#features), מופעים נוספים מקבלים סיומת רצה (#features-2) —
  * כדי שלא ייווצרו id כפולים ב-DOM.
+ * theme (שלב ב'): מועבר הלאה לכל בלוק כדי שיוכל לפתור ברירות מחדל של
+ * אנימציה/כרטיסים/כפתורים מהערכה הפעילה בלי לייבא אותה בעצמו.
  */
-export function PageRenderer({ page }: { page: Page }) {
+export function PageRenderer({ page, theme }: { page: Page; theme?: Theme }) {
   const nav = page.blocks.find((b) => b.type === PINNED_TOP);
   const footer = page.blocks.find((b) => b.type === PINNED_BOTTOM);
   const body = page.blocks.filter(
@@ -27,7 +30,9 @@ export function PageRenderer({ page }: { page: Page }) {
       anchor = n === 1 ? def.anchor : `${def.anchor}-${n}`;
     }
     const Component = def.component;
-    return <Component key={block.id} content={block.content} anchor={anchor} />;
+    return (
+      <Component key={block.id} content={block.content} anchor={anchor} theme={theme} />
+    );
   };
 
   return (

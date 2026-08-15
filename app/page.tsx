@@ -16,7 +16,7 @@ export default function Home() {
   const theme = getTheme(page.themeId) ?? getDefaultTheme();
   return (
     <ThemeScope theme={theme} className="min-h-screen">
-      <PageRenderer page={page} />
+      <PageRenderer page={page} theme={theme} />
       <ThemeSwitcher />
     </ThemeScope>
   );

@@ -84,11 +84,10 @@ export function Reveal({ anim, children, className, style }: RevealProps) {
 }
 
 /**
- * עוזר לילדים בתוך קונטיינר עם סטאגר (למשל רשת כרטיסים בתוך Reveal
- * אחד): מוסיף את המשתנה --i, שממנו ה-CSS מחשב עיכוב מדורג —
- * transition-delay: calc(var(--anim-delay) + var(--i) * var(--anim-stagger)).
- * שימוש: <div style={staggerStyle(i)} className="split-word">…
+ * הערה (שלב ב'): staggerStyle (--i לילד בתוך קונטיינר עם סטאגר משותף,
+ * כמו .split-word) עבר ל-lib/effects.ts. הקובץ הזה נושא "use client",
+ * ולכן כל export שלו — כולל פונקציה טהורה בלי hooks — נחשב client
+ * reference ולא ניתן לקרוא לו ישירות מרכיבי שרת (רוב הבלוקים).
+ * lib/effects.ts הוא מודול רגיל, אז אותה פונקציה בדיוק שם בטוחה
+ * לשימוש גם משרת וגם מקליינט.
  */
-export function staggerStyle(i: number): CSSProperties {
-  return { "--i": i } as CSSProperties;
-}

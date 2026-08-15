@@ -36,7 +36,7 @@ export default async function PreviewPage({
 
   return (
     <ThemeScope theme={theme} className="min-h-screen">
-      <PageRenderer page={getDefaultPage()} />
+      <PageRenderer page={getDefaultPage()} theme={theme} />
     </ThemeScope>
   );
 }

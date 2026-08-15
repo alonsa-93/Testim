@@ -3,8 +3,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { IconCheck } from "@/components/icons";
+import { Reveal } from "@/components/fx/reveal";
+import { ANIM_FIELDS, resolveBlockAnim, staggerChild, staggerStyle } from "@/lib/effects";
 import type { BlockDef } from "@/lib/blocks";
 import type { BlockContent } from "@/lib/fields";
+import type { Theme } from "@/lib/theme";
 
 interface AboutContent {
   eyebrow: string;
@@ -36,17 +39,23 @@ const defaults: AboutContent = {
 function About({
   content,
   anchor,
+  theme,
 }: {
   content: BlockContent;
   anchor?: string;
+  theme?: Theme;
 }) {
   const c = { ...defaults, ...content } as AboutContent;
+  const anim = resolveBlockAnim(theme?.effects, content);
 
   return (
     <Section id={anchor ?? "about"}>
       <div className="grid items-center gap-14 lg:grid-cols-2">
         {/* קומפוזיציה ויזואלית דקורטיבית */}
-        <div className="relative order-2 mx-auto w-full max-w-md lg:order-1 lg:max-w-none">
+        <Reveal
+          anim={staggerChild(anim, 0)}
+          className="relative order-2 mx-auto w-full max-w-md lg:order-1 lg:max-w-none"
+        >
           <div className="grid grid-cols-5 gap-4">
             <div
               aria-hidden="true"
@@ -65,9 +74,9 @@ function About({
               <p className="text-sm text-muted">{c.badgeLabel}</p>
             </Card>
           )}
-        </div>
+        </Reveal>
 
-        <div className="order-1 lg:order-2">
+        <Reveal anim={staggerChild(anim, 1)} className="order-1 lg:order-2">
           {c.eyebrow && <Badge>{c.eyebrow}</Badge>}
           <h2 className="mt-3 text-h2 text-ink">{c.title}</h2>
           {c.text && <p className="mt-5 text-lead text-muted">{c.text}</p>}
@@ -75,7 +84,7 @@ function About({
           {c.points.length > 0 && (
             <ul className="mt-8 space-y-4">
               {c.points.map((p, i) => (
-                <li key={i} className="flex items-start gap-3">
+                <li key={i} className="flex items-start gap-3" style={staggerStyle(i)}>
                   <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
                     <IconCheck className="size-3.5" />
                   </span>
@@ -92,7 +101,7 @@ function About({
               </Button>
             </div>
           )}
-        </div>
+        </Reveal>
       </div>
     </Section>
   );
@@ -119,5 +128,6 @@ export const aboutBlock: BlockDef = {
     { key: "ctaHref", type: "text", label: "כפתור — קישור" },
     { key: "badgeValue", type: "text", label: "כרטיס צף — מספר" },
     { key: "badgeLabel", type: "text", label: "כרטיס צף — הסבר" },
+    ...ANIM_FIELDS,
   ],
 };
