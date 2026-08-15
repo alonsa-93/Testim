@@ -565,15 +565,21 @@
 
 /* קו מצויר לשלב תהליך: הקו הקצר שמתחת לכל שלב "נמתח" בגלילה במקום
    סתם להופיע. מצב הבסיס תמיד ברוחב מלא (2.5rem, כמו w-10 הישן) —
-   הכיווץ ל-0 קורה רק בתוך עוגת ה-reveal בת 4 השכבות (כמו שאר
-   data-animate), כך שבלי JS או עם reduced-motion הקו תמיד גלוי במלואו */
+   הכיווץ קורה רק בתוך עוגת ה-reveal בת 4 השכבות (כמו שאר data-animate),
+   כך שבלי JS או עם reduced-motion הקו תמיד גלוי במלואו.
+   scale (לא inline-size!) כדי שהאנימציה תרכיב רק transform — עקרון
+   "לולאות/אנימציות מאנימות רק transform/opacity" מה-WORKPLAN חל גם על
+   אפקט חד-פעמי כזה, לא רק על לולאות אינסופיות. transform-origin קבוע
+   ל-100% (ימין): האתר תמיד dir=rtl, so "start" = ימין — הקו נמתח מהצד
+   שבו הוא ממוקם (start-0), לא נשאב פנימה מהמרכז. */
 .fx-steps-line {
   inline-size: 2.5rem;
-  transition: inline-size 0.9s var(--ds-ease-out-soft, cubic-bezier(.2,.7,.2,1));
+  transform-origin: 100% 50%;
+  transition: scale 0.9s var(--ds-ease-out-soft, cubic-bezier(.2,.7,.2,1));
 }
 @media (prefers-reduced-motion: no-preference) {
   html[data-js] [data-animate]:not([data-inview]) .fx-steps-line {
-    inline-size: 0;
+    scale: 0 1;
   }
 }
 

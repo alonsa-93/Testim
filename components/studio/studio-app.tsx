@@ -486,10 +486,16 @@ export function StudioApp() {
           <div className="min-h-0 flex-1 space-y-7 overflow-y-auto p-5">
             {tab === "structure" ? (
               // data-studio-motion="off" בזמן עריכה (deliverable 5): נדבק כאן
-              // בלבד — לא בטאב עיצוב — כי כאן משתנה תוכן/מבנה חי תוך כדי הקלדה
+              // בלבד — לא בטאב עיצוב — כי כאן משתנה תוכן/מבנה חי תוך כדי הקלדה.
+              // בשלב-בועה (לא capture!): שדה מוקלד ידנית תמיד עדכן קודם; הדבקה
+              // (Ctrl+V) היא event יחיד עם ה-value המלא, ואם markTyping רץ
+              // ב-capture — *לפני* שה-onChange של השדה עצמו עדכן את ה-state —
+              // ה-setState של typing מפעיל רינדור מתחרה שבולע את ההדבקה בפעם
+              // הראשונה (התגלה ב-QA: הדבקה ראשונה נבלעת, הקלדה רגילה תקינה).
+              // בשלב-בועה markTyping רץ *אחרי* ששדה היעד כבר עדכן את ה-state.
               <div
-                onInputCapture={markTyping}
-                onChangeCapture={markTyping}
+                onInput={markTyping}
+                onChange={markTyping}
                 className="space-y-7"
               >
               {selectedBlock ? (
