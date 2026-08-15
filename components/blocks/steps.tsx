@@ -33,11 +33,17 @@ const defaults: StepsContent = {
   ],
 };
 
-function Steps({ content }: { content: BlockContent }) {
+function Steps({
+  content,
+  anchor,
+}: {
+  content: BlockContent;
+  anchor?: string;
+}) {
   const c = { ...defaults, ...content } as StepsContent;
 
   return (
-    <Section id="steps">
+    <Section id={anchor ?? "steps"}>
       <SectionHeading eyebrow={c.eyebrow} title={c.title} subtitle={c.subtitle} />
       <ol className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
         {c.items.map((s, i) => (
@@ -64,6 +70,7 @@ export const stepsBlock: BlockDef = {
   label: "שלבי תהליך",
   description: "ציר שלבים ממוספר שמסביר איך העבודה מתנהלת",
   component: Steps,
+  anchor: "steps",
   defaults: defaults as unknown as BlockContent,
   fields: [
     { key: "eyebrow", type: "text", label: "כותרת-על קטנה" },

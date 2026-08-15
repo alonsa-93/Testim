@@ -9,6 +9,7 @@
   "blocks": [
     { "id": "navbar-1", "type": "navbar", "content": {} },
     { "id": "hero-1", "type": "hero", "content": {} },
+    { "id": "logos-1", "type": "logos", "content": {} },
     { "id": "features-1", "type": "features", "content": {} },
     { "id": "about-1", "type": "about", "content": {} },
     { "id": "steps-1", "type": "steps", "content": {} },
@@ -17,6 +18,7 @@
     { "id": "faq-1", "type": "faq", "content": {} },
     { "id": "leadForm-1", "type": "leadForm", "content": {} },
     { "id": "cta-1", "type": "cta", "content": {} },
+    { "id": "whatsapp-1", "type": "whatsapp", "content": {} },
     { "id": "footer-1", "type": "footer", "content": {} }
   ]
 }

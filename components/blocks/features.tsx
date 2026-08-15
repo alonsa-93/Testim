@@ -49,11 +49,17 @@ const defaults: FeaturesContent = {
   ],
 };
 
-function Features({ content }: { content: BlockContent }) {
+function Features({
+  content,
+  anchor,
+}: {
+  content: BlockContent;
+  anchor?: string;
+}) {
   const c = { ...defaults, ...content } as FeaturesContent;
 
   return (
-    <Section id="features" className="bg-surface/60">
+    <Section id={anchor ?? "features"} className="bg-surface/60">
       <SectionHeading eyebrow={c.eyebrow} title={c.title} subtitle={c.subtitle} />
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {c.items.map((f, i) => {
@@ -78,6 +84,7 @@ export const featuresBlock: BlockDef = {
   label: "שירותים / יתרונות",
   description: "רשת כרטיסים עם אייקון, כותרת והסבר קצר",
   component: Features,
+  anchor: "features",
   defaults: defaults as unknown as BlockContent,
   fields: [
     { key: "eyebrow", type: "text", label: "כותרת-על קטנה" },

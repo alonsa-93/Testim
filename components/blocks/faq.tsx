@@ -38,11 +38,17 @@ const defaults: FaqContent = {
   ],
 };
 
-function Faq({ content }: { content: BlockContent }) {
+function Faq({
+  content,
+  anchor,
+}: {
+  content: BlockContent;
+  anchor?: string;
+}) {
   const c = { ...defaults, ...content } as FaqContent;
 
   return (
-    <Section id="faq" className="bg-surface/60">
+    <Section id={anchor ?? "faq"} className="bg-surface/60">
       <SectionHeading eyebrow={c.eyebrow} title={c.title} subtitle={c.subtitle} />
       <div className="mx-auto max-w-3xl">
         {c.items.map((f, i) => (
@@ -64,6 +70,7 @@ export const faqBlock: BlockDef = {
   label: "שאלות נפוצות",
   description: "אקורדיון שאלה-תשובה שנפתח בלחיצה",
   component: Faq,
+  anchor: "faq",
   defaults: defaults as unknown as BlockContent,
   fields: [
     { key: "eyebrow", type: "text", label: "כותרת-על קטנה" },

@@ -81,11 +81,17 @@ const defaults: PricingContent = {
   note: "המחירים כוללים מע״מ. ניתן לשלם בפריסה של עד 6 תשלומים.",
 };
 
-function Pricing({ content }: { content: BlockContent }) {
+function Pricing({
+  content,
+  anchor,
+}: {
+  content: BlockContent;
+  anchor?: string;
+}) {
   const c = { ...defaults, ...content } as PricingContent;
 
   return (
-    <Section id="pricing">
+    <Section id={anchor ?? "pricing"}>
       <SectionHeading eyebrow={c.eyebrow} title={c.title} subtitle={c.subtitle} />
       <div className="grid items-start gap-6 lg:grid-cols-3">
         {c.plans.map((p, i) => (
@@ -142,6 +148,7 @@ export const pricingBlock: BlockDef = {
   label: "מחירון / מסלולים",
   description: "כרטיסי מחיר להשוואה, עם אפשרות להדגיש מסלול מומלץ",
   component: Pricing,
+  anchor: "pricing",
   defaults: defaults as unknown as BlockContent,
   fields: [
     { key: "eyebrow", type: "text", label: "כותרת-על קטנה" },

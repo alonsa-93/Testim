@@ -1,10 +1,13 @@
-import type { Page } from "@/lib/page";
+import type { Page, PageBlockInstance } from "@/lib/page";
 import { getBlockDef, PINNED_BOTTOM, PINNED_TOP } from "@/components/blocks/registry";
 
 /**
  * מרנדר דף שלם מתוך אובייקט Page.
  * הניווט תמיד נעוץ לראש העמוד והפוטר לתחתיתו (מבנה HTML תקין),
  * וכל שאר הבלוקים מרונדרים בתוך <main> לפי הסדר שנקבע בסטודיו.
+ * עוגני סקשנים: המופע הראשון של בלוק מקבל את העוגן הקנוני שלו
+ * (#features), מופעים נוספים מקבלים סיומת רצה (#features-2) —
+ * כדי שלא ייווצרו id כפולים ב-DOM.
  */
 export function PageRenderer({ page }: { page: Page }) {
   const nav = page.blocks.find((b) => b.type === PINNED_TOP);
@@ -13,11 +16,18 @@ export function PageRenderer({ page }: { page: Page }) {
     (b) => b.type !== PINNED_TOP && b.type !== PINNED_BOTTOM
   );
 
-  const render = (block: { id: string; type: string; content: Record<string, unknown> }) => {
+  const anchorCounts = new Map<string, number>();
+  const render = (block: PageBlockInstance) => {
     const def = getBlockDef(block.type);
     if (!def) return null;
+    let anchor: string | undefined;
+    if (def.anchor) {
+      const n = (anchorCounts.get(block.type) ?? 0) + 1;
+      anchorCounts.set(block.type, n);
+      anchor = n === 1 ? def.anchor : `${def.anchor}-${n}`;
+    }
     const Component = def.component;
-    return <Component key={block.id} content={block.content} />;
+    return <Component key={block.id} content={block.content} anchor={anchor} />;
   };
 
   return (

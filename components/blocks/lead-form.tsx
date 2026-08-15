@@ -52,7 +52,13 @@ function validate(data: FormData): FormErrors {
   return errors;
 }
 
-function LeadForm({ content }: { content: BlockContent }) {
+function LeadForm({
+  content,
+  anchor,
+}: {
+  content: BlockContent;
+  anchor?: string;
+}) {
   const c = { ...defaults, ...content } as LeadFormContent;
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitted, setSubmitted] = useState(false);
@@ -76,7 +82,7 @@ function LeadForm({ content }: { content: BlockContent }) {
   }
 
   return (
-    <Section id="contact">
+    <Section id={anchor ?? "contact"}>
       <div className="grid gap-14 lg:grid-cols-2">
         <div>
           {c.eyebrow && <Badge>{c.eyebrow}</Badge>}
@@ -226,6 +232,7 @@ export const leadFormBlock: BlockDef = {
   label: "טופס לידים",
   description: "טופס יצירת קשר עם ולידציה בעברית, לצד פרטי התקשרות",
   component: LeadForm,
+  anchor: "contact",
   defaults: defaults as unknown as BlockContent,
   singleton: true,
   fields: [

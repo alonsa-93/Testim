@@ -40,11 +40,17 @@ const defaults: HeroContent = {
   badge: "אחריות מלאה לפרויקט",
 };
 
-function Hero({ content }: { content: BlockContent }) {
+function Hero({
+  content,
+  anchor,
+}: {
+  content: BlockContent;
+  anchor?: string;
+}) {
   const c = { ...defaults, ...content } as HeroContent;
 
   return (
-    <div id="top" className="relative overflow-hidden">
+    <div id={anchor ?? "top"} className="relative overflow-hidden">
       {/* כתמי צבע דקורטיביים ברקע */}
       <div
         aria-hidden="true"
@@ -137,6 +143,7 @@ export const heroBlock: BlockDef = {
   label: "כותרת ראשית (Hero)",
   description: "החלק העליון של הדף — הכותרת הגדולה, המשפט המסביר וכפתורי הפעולה",
   component: Hero,
+  anchor: "top",
   defaults: defaults as unknown as BlockContent,
   singleton: true,
   fields: [

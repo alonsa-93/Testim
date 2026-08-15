@@ -39,7 +39,7 @@ export default async function PublishedPage({
 
   const theme = getTheme(page.themeId) ?? getDefaultTheme();
   return (
-    <div style={themeToStyle(theme)} className="min-h-screen bg-bg text-ink">
+    <div style={themeToStyle(theme)} className="ds-scope min-h-screen">
       <PageRenderer page={page} />
     </div>
   );

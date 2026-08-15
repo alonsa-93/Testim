@@ -33,11 +33,17 @@ const defaults: AboutContent = {
   badgeLabel: "משך פרויקט ממוצע, מתכנון למפתח",
 };
 
-function About({ content }: { content: BlockContent }) {
+function About({
+  content,
+  anchor,
+}: {
+  content: BlockContent;
+  anchor?: string;
+}) {
   const c = { ...defaults, ...content } as AboutContent;
 
   return (
-    <Section id="about">
+    <Section id={anchor ?? "about"}>
       <div className="grid items-center gap-14 lg:grid-cols-2">
         {/* קומפוזיציה ויזואלית דקורטיבית */}
         <div className="relative order-2 mx-auto w-full max-w-md lg:order-1 lg:max-w-none">
@@ -97,6 +103,7 @@ export const aboutBlock: BlockDef = {
   label: "אודות / הגישה שלנו",
   description: "טקסט מסביר עם רשימת נקודות וויזואל לצידו",
   component: About,
+  anchor: "about",
   defaults: defaults as unknown as BlockContent,
   fields: [
     { key: "eyebrow", type: "text", label: "כותרת-על קטנה" },

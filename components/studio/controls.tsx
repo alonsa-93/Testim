@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 
 /**
  * פקדי העריכה של הסטודיו.
@@ -25,12 +25,18 @@ export function PanelSection({
   );
 }
 
-function normalizeHex(value: string): string {
+/** מנרמל הקס: מוסיף #, מרחיב קיצור בן 3 תווים; מחזיר null אם לא תקין */
+function tryNormalizeHex(value: string): string | null {
   let h = value.trim().replace(/^#/, "");
   if (h.length === 3) h = h.split("").map((c) => c + c).join("");
-  return /^[0-9a-fA-F]{6}$/.test(h) ? `#${h.toUpperCase()}` : "#000000";
+  return /^[0-9a-fA-F]{6}$/.test(h) ? `#${h.toUpperCase()}` : null;
 }
 
+/**
+ * שדה צבע: בוחר צבע + קלט הקס. ערך לא תקין מקבל מסגרת אדומה,
+ * לא נשמר לערכה, וב-blur חוזרים לערך התקין האחרון — כך שערך
+ * פגום לעולם לא מגיע לטיוטה או לקובץ המיוצא.
+ */
 export function ColorField({
   label,
   value,
@@ -41,6 +47,21 @@ export function ColorField({
   onChange: (value: string) => void;
 }) {
   const id = useId();
+  const [text, setText] = useState(value);
+  const [lastValue, setLastValue] = useState(value);
+  // הערך השתנה מבחוץ (בוחר הצבע, "תקן", החלפת ערכה) — מסנכרנים את הקלט
+  if (value !== lastValue) {
+    setLastValue(value);
+    setText(value);
+  }
+  const invalid = tryNormalizeHex(text) === null;
+
+  const handleText = (raw: string) => {
+    setText(raw);
+    const normalized = tryNormalizeHex(raw);
+    if (normalized) onChange(normalized);
+  };
+
   return (
     <div className="flex items-center justify-between gap-3">
       <label htmlFor={id} className="text-sm text-slate-600">
@@ -50,17 +71,26 @@ export function ColorField({
         <input
           id={id}
           type="color"
-          value={normalizeHex(value)}
+          value={tryNormalizeHex(value) ?? "#000000"}
           onChange={(e) => onChange(e.target.value.toUpperCase())}
           className="size-8 cursor-pointer rounded-md border border-slate-300 bg-transparent p-0.5"
         />
         <input
           type="text"
           dir="ltr"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
+          value={text}
+          onChange={(e) => handleText(e.target.value)}
+          onBlur={() => {
+            const normalized = tryNormalizeHex(text);
+            setText(normalized ?? value);
+          }}
           aria-label={`${label} — ערך הקסדצימלי`}
-          className="w-24 rounded-md border border-slate-300 px-2 py-1.5 font-mono text-xs text-slate-800 focus:border-indigo-500 focus:outline-none"
+          aria-invalid={invalid}
+          className={`w-24 rounded-md border px-2 py-1.5 font-mono text-xs text-slate-800 focus:outline-none ${
+            invalid
+              ? "border-red-500 bg-red-50 focus:border-red-500"
+              : "border-slate-300 focus:border-indigo-500"
+          }`}
         />
       </div>
     </div>
@@ -150,12 +180,14 @@ export function TextField({
   label,
   value,
   onChange,
+  onBlur,
   dir,
   hint,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
+  onBlur?: () => void;
   dir?: "ltr" | "rtl";
   hint?: string;
 }) {
@@ -171,6 +203,7 @@ export function TextField({
         dir={dir}
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onBlur={onBlur}
         className="rounded-md border border-slate-300 px-2.5 py-2 text-sm text-slate-800 focus:border-indigo-500 focus:outline-none"
       />
       {hint && <p className="text-xs text-slate-400">{hint}</p>}

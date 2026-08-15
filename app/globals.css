@@ -38,6 +38,19 @@
   --container-shell: var(--ds-max-w);
 }
 
+/**
+ * עוטף ערכה: כל אלמנט שמקבל themeToStyle חייב לשאת גם את הקלאס הזה,
+ * כדי שפונט הגוף, גודל הבסיס והצבעים ייפתרו מהמשתנים של הערכה
+ * העטופה — ולא יירשו מה-body (שנושא את ערכת ברירת המחדל).
+ */
+.ds-scope {
+  background-color: var(--ds-color-bg);
+  color: var(--ds-color-text);
+  font-family: var(--ds-font-body);
+  font-size: var(--ds-fs-base);
+  line-height: 1.65;
+}
+
 @layer base {
   body {
     background-color: var(--ds-color-bg);

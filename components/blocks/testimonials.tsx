@@ -47,11 +47,17 @@ function initials(name: string): string {
     .join("");
 }
 
-function Testimonials({ content }: { content: BlockContent }) {
+function Testimonials({
+  content,
+  anchor,
+}: {
+  content: BlockContent;
+  anchor?: string;
+}) {
   const c = { ...defaults, ...content } as TestimonialsContent;
 
   return (
-    <Section id="testimonials" className="bg-surface/60">
+    <Section id={anchor ?? "testimonials"} className="bg-surface/60">
       <SectionHeading eyebrow={c.eyebrow} title={c.title} subtitle={c.subtitle} />
       <div className="grid gap-6 md:grid-cols-3">
         {c.items.map((t, i) => (
@@ -86,6 +92,7 @@ export const testimonialsBlock: BlockDef = {
   label: "המלצות לקוחות",
   description: "שלושה ציטוטים עם שם, תפקיד ודירוג כוכבים",
   component: Testimonials,
+  anchor: "testimonials",
   defaults: defaults as unknown as BlockContent,
   fields: [
     { key: "eyebrow", type: "text", label: "כותרת-על קטנה" },

@@ -47,6 +47,38 @@ export function looksLikePage(obj: unknown): obj is Page {
   );
 }
 
+/**
+ * נרמול דף שהגיע מבחוץ (ייבוא/טיוטה ישנה): משלים מזהי בלוקים חסרים
+ * או כפולים, מוודא ש-content הוא אובייקט ושה-meta קיים.
+ * בלי זה, בלוקים ללא id חולקים מפתח — עריכה זולגת ביניהם ומחיקה
+ * של אחד מוחקת את כולם.
+ */
+export function normalizePage(p: Page): Page {
+  const blocks: PageBlockInstance[] = [];
+  for (const raw of p.blocks) {
+    const block: PageBlockInstance = {
+      id: typeof raw.id === "string" ? raw.id : "",
+      type: raw.type,
+      content:
+        typeof raw.content === "object" && raw.content !== null
+          ? raw.content
+          : {},
+    };
+    if (!block.id || blocks.some((b) => b.id === block.id)) {
+      block.id = newBlockId(block.type, blocks);
+    }
+    blocks.push(block);
+  }
+  return {
+    ...p,
+    meta: {
+      title: p.meta?.title ?? "",
+      description: p.meta?.description ?? "",
+    },
+    blocks,
+  };
+}
+
 /** מזהה מופע ייחודי לבלוק חדש שנוסף בסטודיו */
 export function newBlockId(type: string, existing: PageBlockInstance[]): string {
   let n = existing.filter((b) => b.type === type).length + 1;

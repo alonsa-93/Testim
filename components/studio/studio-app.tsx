@@ -14,7 +14,7 @@ import {
   type ThemeColors,
 } from "@/lib/theme";
 import { bestTextOn } from "@/lib/contrast";
-import { emptyPage, looksLikePage, type Page } from "@/lib/page";
+import { emptyPage, looksLikePage, normalizePage, type Page } from "@/lib/page";
 import { PageRenderer } from "@/components/page-renderer";
 import { StructurePanel } from "@/components/studio/structure-panel";
 import { BlockEditor } from "@/components/studio/block-editor";
@@ -83,9 +83,10 @@ export function StudioApp() {
   const [theme, setTheme] = useState<Theme>(
     () => readDraft(THEME_DRAFT_KEY, looksLikeTheme) ?? structuredClone(getDefaultTheme())
   );
-  const [page, setPage] = useState<Page>(
-    () => readDraft(PAGE_DRAFT_KEY, looksLikePage) ?? structuredClone(getDefaultPage())
-  );
+  const [page, setPage] = useState<Page>(() => {
+    const draft = readDraft(PAGE_DRAFT_KEY, looksLikePage);
+    return draft ? normalizePage(draft) : structuredClone(getDefaultPage());
+  });
   const [tab, setTab] = useState<"structure" | "design">("structure");
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const [baseId, setBaseId] = useState(getDefaultTheme().id);
@@ -94,6 +95,7 @@ export function StudioApp() {
     null
   );
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // שמירה אוטומטית של הטיוטות
   useEffect(() => {
@@ -113,9 +115,19 @@ export function StudioApp() {
   }, [page]);
 
   const flash = (kind: "ok" | "error", text: string) => {
+    // ביטול הטיימר הקודם — אחרת הודעה ישנה מוחקת את החדשה מוקדם מדי
+    if (noticeTimer.current) clearTimeout(noticeTimer.current);
     setNotice({ kind, text });
-    setTimeout(() => setNotice(null), 4000);
+    noticeTimer.current = setTimeout(() => setNotice(null), 4000);
   };
+
+  /** סניטציה של מזהים — רצה ב-blur ובייצוא, לא בכל הקשה (שומר על הסמן) */
+  const sanitizeId = (v: string) =>
+    v
+      .toLowerCase()
+      .replace(/[^a-z0-9-]+/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "");
 
   const setColor = (key: keyof ThemeColors, value: string) =>
     setTheme((t) => ({ ...t, colors: { ...t.colors, [key]: value } }));
@@ -177,13 +189,15 @@ export function StudioApp() {
 
   function downloadPage() {
     // הדף נשמר עם מזהה הערכה שנערכה איתו, כדי שייראה זהה גם אחרי הפרסום
-    download({ ...page, themeId: theme.id }, `${page.id || "page"}.json`);
-    flash("ok", `הקובץ ${page.id || "page"}.json ירד — שמרו אותו בתיקיית pages-data/`);
+    const id = sanitizeId(page.id) || "page";
+    download({ ...page, id, themeId: sanitizeId(theme.id) || "theme" }, `${id}.json`);
+    flash("ok", `הקובץ ${id}.json ירד — שמרו אותו בתיקיית pages-data/`);
   }
 
   function downloadTheme() {
-    download(theme, `${theme.id || "theme"}.json`);
-    flash("ok", `הקובץ ${theme.id || "theme"}.json ירד — שמרו אותו בתיקיית themes/`);
+    const id = sanitizeId(theme.id) || "theme";
+    download({ ...theme, id }, `${id}.json`);
+    flash("ok", `הקובץ ${id}.json ירד — שמרו אותו בתיקיית themes/`);
   }
 
   /** ייבוא חכם: מזהה לבד אם הקובץ הוא דף או ערכה */
@@ -191,7 +205,8 @@ export function StudioApp() {
     try {
       const parsed: unknown = JSON.parse(await file.text());
       if (looksLikePage(parsed)) {
-        setPage(parsed);
+        // נרמול משלים מזהי בלוקים חסרים/כפולים — בלעדיו עריכה זולגת בין בלוקים
+        setPage(normalizePage(parsed));
         setSelectedBlockId(null);
         flash("ok", `הדף "${parsed.name}" נטען`);
         return;
@@ -343,13 +358,11 @@ export function StudioApp() {
                       label="מזהה (באנגלית)"
                       dir="ltr"
                       value={page.id}
-                      onChange={(v) =>
-                        setPage((p) => ({
-                          ...p,
-                          id: v.toLowerCase().replace(/[^a-z0-9-]/g, "-"),
-                        }))
+                      onChange={(v) => setPage((p) => ({ ...p, id: v }))}
+                      onBlur={() =>
+                        setPage((p) => ({ ...p, id: sanitizeId(p.id) }))
                       }
-                      hint="קובע את הכתובת: /p/<מזהה>"
+                      hint="קובע את הכתובת: /p/<מזהה> — אותיות לטיניות, ספרות ומקפים"
                     />
                     <TextField
                       label="כותרת לדפדפן ולגוגל"
@@ -448,11 +461,9 @@ export function StudioApp() {
                     label="מזהה (באנגלית)"
                     dir="ltr"
                     value={theme.id}
-                    onChange={(v) =>
-                      setTheme((t) => ({
-                        ...t,
-                        id: v.toLowerCase().replace(/[^a-z0-9-]/g, "-"),
-                      }))
+                    onChange={(v) => setTheme((t) => ({ ...t, id: v }))}
+                    onBlur={() =>
+                      setTheme((t) => ({ ...t, id: sanitizeId(t.id) }))
                     }
                     hint="שם הקובץ וכתובת /preview — אותיות לטיניות, ספרות ומקפים"
                   />
@@ -596,7 +607,12 @@ export function StudioApp() {
                   {page.name} · {theme.name}
                 </span>
               </div>
-              <div style={themeToStyle(theme)} className="bg-bg text-ink">
+              {/* translateZ(0) גורם ל-position:fixed בתוך התצוגה (כפתור וואטסאפ)
+                  להיצמד למסגרת התצוגה במקום לחלון של הסטודיו */}
+              <div
+                style={themeToStyle(theme)}
+                className="ds-scope [transform:translateZ(0)]"
+              >
                 {page.blocks.length > 0 ? (
                   <PageRenderer page={page} />
                 ) : (
