@@ -3,7 +3,12 @@
 import { useId, useState } from "react";
 import { ICONS } from "@/components/icon-registry";
 import { emptyItem, type FieldDef } from "@/lib/fields";
-import { SelectField, SliderField } from "@/components/studio/controls";
+import {
+  CheckboxField,
+  ResetButton,
+  SelectField,
+  SliderField,
+} from "@/components/studio/controls";
 
 /**
  * עורך שדות גנרי: מקבל סכמת שדות של בלוק ובונה ממנה טופס עריכה.
@@ -21,36 +26,39 @@ export function FieldEditor({
   field,
   value,
   onChange,
+  isModified,
+  onReset,
 }: {
   field: FieldDef;
   value: unknown;
   onChange: (next: unknown) => void;
+  /** האם השדה נדרס מברירת המחדל של הבלוק — מציג ↺ ליד התווית (WORKPLAN 4C) */
+  isModified?: boolean;
+  onReset?: () => void;
 }) {
   const id = useId();
 
   if (field.type === "boolean") {
     return (
-      <div className="flex items-center gap-2">
-        <input
-          id={id}
-          type="checkbox"
-          checked={Boolean(value)}
-          onChange={(e) => onChange(e.target.checked)}
-          className="size-4 cursor-pointer accent-indigo-600"
-        />
-        <label htmlFor={id} className="cursor-pointer text-sm text-slate-600">
-          {field.label}
-        </label>
-      </div>
+      <CheckboxField
+        label={field.label}
+        checked={Boolean(value)}
+        onChange={onChange}
+        isModified={isModified}
+        onReset={onReset}
+      />
     );
   }
 
   if (field.type === "icon") {
     return (
       <div className="flex flex-col gap-1.5">
-        <label htmlFor={id} className="text-sm text-slate-600">
-          {field.label}
-        </label>
+        <span className="flex items-center gap-1">
+          <label htmlFor={id} className="text-sm text-slate-600">
+            {field.label}
+          </label>
+          {isModified && onReset && <ResetButton label={field.label} onReset={onReset} />}
+        </span>
         <select
           id={id}
           value={String(value ?? "")}
@@ -75,6 +83,8 @@ export function FieldEditor({
           value={String(value ?? field.options[0]?.value ?? "")}
           onChange={(v) => onChange(v)}
           options={field.options}
+          isModified={isModified}
+          onReset={onReset}
         />
         {field.hint && <p className="text-xs text-slate-400">{field.hint}</p>}
       </div>
@@ -91,6 +101,8 @@ export function FieldEditor({
         max={field.max}
         step={field.step}
         unit={field.unit}
+        isModified={isModified}
+        onReset={onReset}
       />
     );
   }
@@ -100,7 +112,10 @@ export function FieldEditor({
     const update = (next: string[]) => onChange(next);
     return (
       <div className="flex flex-col gap-2">
-        <span className="text-sm text-slate-600">{field.label}</span>
+        <span className="flex items-center gap-1">
+          <span className="text-sm text-slate-600">{field.label}</span>
+          {isModified && onReset && <ResetButton label={field.label} onReset={onReset} />}
+        </span>
         {items.map((item, i) => (
           <div key={i} className="flex items-center gap-1.5">
             <input
@@ -144,6 +159,8 @@ export function FieldEditor({
         field={field}
         items={items}
         onChange={(next) => onChange(next)}
+        isModified={isModified}
+        onReset={onReset}
       />
     );
   }
@@ -152,9 +169,12 @@ export function FieldEditor({
   const Tag = field.type === "textarea" ? "textarea" : "input";
   return (
     <div className="flex flex-col gap-1.5">
-      <label htmlFor={id} className="text-sm text-slate-600">
-        {field.label}
-      </label>
+      <span className="flex items-center gap-1">
+        <label htmlFor={id} className="text-sm text-slate-600">
+          {field.label}
+        </label>
+        {isModified && onReset && <ResetButton label={field.label} onReset={onReset} />}
+      </span>
       <Tag
         id={id}
         value={String(value ?? "")}
@@ -173,10 +193,14 @@ function ListEditor({
   field,
   items,
   onChange,
+  isModified,
+  onReset,
 }: {
   field: Extract<FieldDef, { type: "list" }>;
   items: Array<Record<string, unknown>>;
   onChange: (next: Array<Record<string, unknown>>) => void;
+  isModified?: boolean;
+  onReset?: () => void;
 }) {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
@@ -191,7 +215,10 @@ function ListEditor({
 
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-sm font-medium text-slate-600">{field.label}</span>
+      <span className="flex items-center gap-1">
+        <span className="text-sm font-medium text-slate-600">{field.label}</span>
+        {isModified && onReset && <ResetButton label={field.label} onReset={onReset} />}
+      </span>
 
       {items.map((item, i) => {
         const isOpen = openIndex === i;

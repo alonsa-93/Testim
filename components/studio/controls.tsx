@@ -25,6 +25,38 @@ export function PanelSection({
   );
 }
 
+/**
+ * כפתור האיפוס ↺ ‏(Webflow's blue-label pattern, ux-report B5):
+ * מופיע רק כש-isModified הוא true, ולוחצים עליו כדי למחוק את
+ * הדריסה/להחזיר לערך ברירת המחדל — בלי דיאלוג אישור, כי זה שדה
+ * בודד ולא פעולה הרסנית.
+ */
+export function ResetButton({
+  label,
+  onReset,
+}: {
+  label: string;
+  onReset: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onReset}
+      title="איפוס לברירת המחדל"
+      aria-label={`איפוס ${label} לברירת המחדל`}
+      className="cursor-pointer rounded-md px-1 text-sm leading-none text-indigo-500 hover:text-indigo-700"
+    >
+      <span aria-hidden="true">↺</span>
+    </button>
+  );
+}
+
+/** מוסיף props של איפוס-שדה (isModified/onReset) לכל פקד קיים */
+interface ResettableProps {
+  isModified?: boolean;
+  onReset?: () => void;
+}
+
 /** מנרמל הקס: מוסיף #, מרחיב קיצור בן 3 תווים; מחזיר null אם לא תקין */
 function tryNormalizeHex(value: string): string | null {
   let h = value.trim().replace(/^#/, "");
@@ -41,11 +73,13 @@ export function ColorField({
   label,
   value,
   onChange,
+  isModified,
+  onReset,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
-}) {
+} & ResettableProps) {
   const id = useId();
   const [text, setText] = useState(value);
   const [lastValue, setLastValue] = useState(value);
@@ -64,9 +98,12 @@ export function ColorField({
 
   return (
     <div className="flex items-center justify-between gap-3">
-      <label htmlFor={id} className="text-sm text-slate-600">
-        {label}
-      </label>
+      <span className="flex items-center gap-1">
+        <label htmlFor={id} className="text-sm text-slate-600">
+          {label}
+        </label>
+        {isModified && onReset && <ResetButton label={label} onReset={onReset} />}
+      </span>
       <div className="flex items-center gap-2">
         <input
           id={id}
@@ -106,6 +143,8 @@ export function SliderField({
   step = 1,
   unit = "px",
   disabled = false,
+  isModified,
+  onReset,
 }: {
   label: string;
   value: number;
@@ -115,14 +154,17 @@ export function SliderField({
   step?: number;
   unit?: string;
   disabled?: boolean;
-}) {
+} & ResettableProps) {
   const id = useId();
   return (
     <div className={disabled ? "opacity-40" : undefined}>
       <div className="flex items-center justify-between">
-        <label htmlFor={id} className="text-sm text-slate-600">
-          {label}
-        </label>
+        <span className="flex items-center gap-1">
+          <label htmlFor={id} className="text-sm text-slate-600">
+            {label}
+          </label>
+          {isModified && onReset && <ResetButton label={label} onReset={onReset} />}
+        </span>
         <span className="font-mono text-xs text-slate-500" dir="ltr">
           {value}
           {unit}
@@ -148,18 +190,23 @@ export function SelectField({
   value,
   onChange,
   options,
+  isModified,
+  onReset,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   options: Array<{ value: string; label: string }>;
-}) {
+} & ResettableProps) {
   const id = useId();
   return (
     <div className="flex flex-col gap-1.5">
-      <label htmlFor={id} className="text-sm text-slate-600">
-        {label}
-      </label>
+      <span className="flex items-center gap-1">
+        <label htmlFor={id} className="text-sm text-slate-600">
+          {label}
+        </label>
+        {isModified && onReset && <ResetButton label={label} onReset={onReset} />}
+      </span>
       <select
         id={id}
         value={value}
@@ -183,6 +230,8 @@ export function TextField({
   onBlur,
   dir,
   hint,
+  isModified,
+  onReset,
 }: {
   label: string;
   value: string;
@@ -190,13 +239,16 @@ export function TextField({
   onBlur?: () => void;
   dir?: "ltr" | "rtl";
   hint?: string;
-}) {
+} & ResettableProps) {
   const id = useId();
   return (
     <div className="flex flex-col gap-1.5">
-      <label htmlFor={id} className="text-sm text-slate-600">
-        {label}
-      </label>
+      <span className="flex items-center gap-1">
+        <label htmlFor={id} className="text-sm text-slate-600">
+          {label}
+        </label>
+        {isModified && onReset && <ResetButton label={label} onReset={onReset} />}
+      </span>
       <input
         id={id}
         type="text"
@@ -215,11 +267,13 @@ export function CheckboxField({
   label,
   checked,
   onChange,
+  isModified,
+  onReset,
 }: {
   label: string;
   checked: boolean;
   onChange: (checked: boolean) => void;
-}) {
+} & ResettableProps) {
   const id = useId();
   return (
     <div className="flex items-center gap-2">
@@ -233,6 +287,56 @@ export function CheckboxField({
       <label htmlFor={id} className="cursor-pointer text-sm text-slate-600">
         {label}
       </label>
+      {isModified && onReset && <ResetButton label={label} onReset={onReset} />}
+    </div>
+  );
+}
+
+/**
+ * שורת צ'יפים (segmented control): הפקד החוזר לכל בחירה סגורה
+ * "מוצגת בבת אחת" בסטודיו — עוצמת אנימציה, סוג רקע, סגנון כרטיסים,
+ * זוהר, סגנון כפתורים. נבנה פעם אחת כאן כדי לא לשכפל את אותו
+ * ה-markup חמש פעמים (WORKPLAN 4C).
+ */
+export function ChipRow({
+  label,
+  value,
+  onChange,
+  options,
+  hint,
+  isModified,
+  onReset,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: Array<{ value: string; label: string }>;
+  hint?: string;
+} & ResettableProps) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <span className="flex items-center gap-1">
+        <span className="text-sm text-slate-600">{label}</span>
+        {isModified && onReset && <ResetButton label={label} onReset={onReset} />}
+      </span>
+      <div className="flex flex-wrap gap-1.5" role="group" aria-label={label}>
+        {options.map((o) => (
+          <button
+            key={o.value}
+            type="button"
+            onClick={() => onChange(o.value)}
+            aria-pressed={value === o.value}
+            className={`cursor-pointer rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+              value === o.value
+                ? "border-indigo-600 bg-indigo-600 text-white"
+                : "border-slate-300 bg-white text-slate-600 hover:border-indigo-300 hover:text-indigo-700"
+            }`}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+      {hint && <p className="text-xs text-slate-400">{hint}</p>}
     </div>
   );
 }
