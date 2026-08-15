@@ -1,0 +1,36 @@
+{
+  "id": "nova-dark",
+  "name": "נובה — כהה וטכנולוגי",
+  "description": "דוגמה לערכת לקוח: רקע כהה, אינדיגו זוהר וטורקיז. מתאים לסטארטאפ או מוצר דיגיטלי.",
+  "colors": {
+    "primary": "#818CF8",
+    "primaryHover": "#A5B4FC",
+    "onPrimary": "#0B1020",
+    "accent": "#22D3EE",
+    "onAccent": "#062A33",
+    "background": "#0B1020",
+    "surface": "#151C33",
+    "text": "#EEF2FB",
+    "textMuted": "#9AA7C7",
+    "border": "#273356"
+  },
+  "typography": {
+    "fontHeading": "heebo",
+    "fontBody": "heebo",
+    "baseSize": 16,
+    "scale": 1.26,
+    "headingWeight": 700
+  },
+  "shape": {
+    "cardRadius": 20,
+    "buttonRadius": 14,
+    "fieldRadius": 12
+  },
+  "layout": {
+    "sectionSpacing": 96,
+    "maxWidth": 1200
+  },
+  "effects": {
+    "shadow": "strong"
+  }
+}

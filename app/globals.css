@@ -1,0 +1,76 @@
+@import "tailwindcss";
+
+/**
+ * גשר בין מנוע הערכות ל-Tailwind:
+ * כל טוקן עיצובי הוא משתנה CSS‏ (--ds-*) שמוזרק מ-JSON של הערכה.
+ * המיפוי כאן (theme inline) הופך אותם ליוטיליטיז — bg-primary,
+ * text-ink, rounded-card וכן הלאה. הרכיבים משתמשים רק ביוטיליטיז
+ * האלה, ולכן החלפת ערכה מחליפה את כל העיצוב בלי לגעת בקוד.
+ */
+@theme inline {
+  --color-primary: var(--ds-color-primary);
+  --color-primary-hover: var(--ds-color-primary-hover);
+  --color-on-primary: var(--ds-color-on-primary);
+  --color-accent: var(--ds-color-accent);
+  --color-on-accent: var(--ds-color-on-accent);
+  --color-bg: var(--ds-color-bg);
+  --color-surface: var(--ds-color-surface);
+  --color-ink: var(--ds-color-text);
+  --color-muted: var(--ds-color-text-muted);
+  --color-line: var(--ds-color-border);
+
+  --font-heading: var(--ds-font-heading);
+  --font-body: var(--ds-font-body);
+
+  --text-lead: var(--ds-fs-lead);
+  --text-h3: var(--ds-fs-h3);
+  --text-h2: var(--ds-fs-h2);
+  --text-h1: var(--ds-fs-h1);
+  --text-display: var(--ds-fs-display);
+
+  --radius-card: var(--ds-radius-card);
+  --radius-btn: var(--ds-radius-btn);
+  --radius-field: var(--ds-radius-field);
+
+  --shadow-card: var(--ds-shadow-card);
+
+  --spacing-section: var(--ds-section-y);
+  --container-shell: var(--ds-max-w);
+}
+
+@layer base {
+  body {
+    background-color: var(--ds-color-bg);
+    color: var(--ds-color-text);
+    font-family: var(--ds-font-body);
+    font-size: var(--ds-fs-base);
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: var(--ds-font-heading);
+    font-weight: var(--ds-heading-weight);
+    line-height: 1.18;
+    text-wrap: balance;
+  }
+
+  /* טבעת פוקוס עקבית ונגישה בכל הערכות */
+  :focus-visible {
+    outline: 2px solid var(--ds-color-primary);
+    outline-offset: 3px;
+    border-radius: 4px;
+  }
+
+  ::selection {
+    background: color-mix(in srgb, var(--ds-color-primary) 22%, transparent);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}

@@ -1,0 +1,181 @@
+"use client";
+
+import { useState } from "react";
+import { Section } from "@/components/ui/section";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Field, Input, Textarea } from "@/components/ui/field";
+import { IconCheck, IconMail, IconMapPin, IconPhone } from "@/components/icons";
+
+type FormErrors = Partial<Record<"name" | "phone" | "email", string>>;
+
+function validate(data: FormData): FormErrors {
+  const errors: FormErrors = {};
+  const name = String(data.get("name") ?? "").trim();
+  const phone = String(data.get("phone") ?? "").replace(/[\s-]/g, "");
+  const email = String(data.get("email") ?? "").trim();
+
+  if (name.length < 2) errors.name = "נשמח לשם מלא";
+  if (!/^0\d{8,9}$/.test(phone)) errors.phone = "מספר טלפון ישראלי תקין, למשל 050-1234567";
+  if (email && !/^\S+@\S+\.\S+$/.test(email)) errors.email = "כתובת אימייל לא תקינה";
+  return errors;
+}
+
+export function LeadForm() {
+  const [errors, setErrors] = useState<FormErrors>({});
+  const [submitted, setSubmitted] = useState(false);
+
+  function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const data = new FormData(e.currentTarget);
+
+    // שדה פיתיון לבוטים — בני אדם לא רואים ולא ממלאים אותו
+    if (String(data.get("company") ?? "") !== "") {
+      setSubmitted(true);
+      return;
+    }
+
+    const nextErrors = validate(data);
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) return;
+
+    // כאן מחברים שליחה אמיתית: קריאת API, CRM, אימייל או webhook.
+    setSubmitted(true);
+  }
+
+  return (
+    <Section id="contact">
+      <div className="grid gap-14 lg:grid-cols-2">
+        <div>
+          <Badge>מדברים?</Badge>
+          <h2 className="mt-3 text-h2 text-ink">
+            הצעד הראשון הוא שיחה אחת
+          </h2>
+          <p className="mt-5 max-w-lg text-lead text-muted">
+            השאירו פרטים ונחזור אליכם עד יום העסקים הבא לשיחת היכרות קצרה —
+            בלי התחייבות ובלי לחץ מכירתי.
+          </p>
+
+          <ul className="mt-9 space-y-5">
+            <li className="flex items-center gap-3.5">
+              <span className="flex size-11 items-center justify-center rounded-field bg-primary/10 text-primary">
+                <IconPhone className="size-5" />
+              </span>
+              <div>
+                <p className="text-sm text-muted">טלפון</p>
+                <a href="tel:0500000000" className="font-semibold text-ink hover:text-primary" dir="ltr">
+                  050-000-0000
+                </a>
+              </div>
+            </li>
+            <li className="flex items-center gap-3.5">
+              <span className="flex size-11 items-center justify-center rounded-field bg-primary/10 text-primary">
+                <IconMail className="size-5" />
+              </span>
+              <div>
+                <p className="text-sm text-muted">אימייל</p>
+                <a href="mailto:hello@studio-alon.co.il" className="font-semibold text-ink hover:text-primary" dir="ltr">
+                  hello@studio-alon.co.il
+                </a>
+              </div>
+            </li>
+            <li className="flex items-center gap-3.5">
+              <span className="flex size-11 items-center justify-center rounded-field bg-primary/10 text-primary">
+                <IconMapPin className="size-5" />
+              </span>
+              <div>
+                <p className="text-sm text-muted">סטודיו</p>
+                <p className="font-semibold text-ink">שדרות רוטשילד 1, תל אביב</p>
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        <Card className="p-6 md:p-9">
+          {submitted ? (
+            <div role="status" className="flex h-full min-h-72 flex-col items-center justify-center text-center">
+              <span className="flex size-14 items-center justify-center rounded-full bg-primary text-on-primary">
+                <IconCheck className="size-7" />
+              </span>
+              <h3 className="mt-5 text-h3 text-ink">תודה! הפנייה התקבלה</h3>
+              <p className="mt-2 max-w-xs text-muted">
+                נחזור אליכם עד יום העסקים הבא. בינתיים אפשר להציץ בשאלות הנפוצות.
+              </p>
+              <Button
+                variant="ghost"
+                className="mt-6"
+                onClick={() => setSubmitted(false)}
+              >
+                שליחת פנייה נוספת
+              </Button>
+            </div>
+          ) : (
+            <form onSubmit={onSubmit} noValidate className="space-y-5">
+              <div className="grid gap-5 sm:grid-cols-2">
+                <Field id="lead-name" label="שם מלא" required error={errors.name}>
+                  <Input
+                    id="lead-name"
+                    name="name"
+                    autoComplete="name"
+                    placeholder="ישראל ישראלי"
+                    aria-invalid={Boolean(errors.name)}
+                    aria-describedby={errors.name ? "lead-name-error" : undefined}
+                  />
+                </Field>
+                <Field id="lead-phone" label="טלפון" required error={errors.phone}>
+                  <Input
+                    id="lead-phone"
+                    name="phone"
+                    type="tel"
+                    autoComplete="tel"
+                    placeholder="050-1234567"
+                    aria-invalid={Boolean(errors.phone)}
+                    aria-describedby={errors.phone ? "lead-phone-error" : undefined}
+                  />
+                </Field>
+              </div>
+              <Field id="lead-email" label="אימייל" error={errors.email}>
+                <Input
+                  id="lead-email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  placeholder="you@example.com"
+                  aria-invalid={Boolean(errors.email)}
+                  aria-describedby={errors.email ? "lead-email-error" : undefined}
+                />
+              </Field>
+              <Field id="lead-message" label="ספרו לנו על הפרויקט">
+                <Textarea
+                  id="lead-message"
+                  name="message"
+                  placeholder="דירת 4 חדרים ברמת גן, מתלבטים בין שיפוץ מלא לחלקי..."
+                />
+              </Field>
+
+              {/* Honeypot — מוסתר מבני אדם ומקוראי מסך */}
+              <div className="hidden" aria-hidden="true">
+                <label htmlFor="lead-company">חברה</label>
+                <input
+                  id="lead-company"
+                  name="company"
+                  type="text"
+                  tabIndex={-1}
+                  autoComplete="off"
+                />
+              </div>
+
+              <Button type="submit" size="lg" className="w-full">
+                שליחה — נחזור אליכם בהקדם
+              </Button>
+              <p className="text-center text-xs text-muted">
+                הפרטים ישמשו לחזרה אליכם בלבד ולא יועברו לגורם שלישי.
+              </p>
+            </form>
+          )}
+        </Card>
+      </div>
+    </Section>
+  );
+}

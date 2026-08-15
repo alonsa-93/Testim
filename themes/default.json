@@ -1,0 +1,36 @@
+{
+  "id": "default",
+  "name": "פרימיום נקי",
+  "description": "ערכת ברירת המחדל — רקע בהיר, נייבי עמוק וזהב עדין. יוקרתי ומקצועי.",
+  "colors": {
+    "primary": "#12263A",
+    "primaryHover": "#1C3A57",
+    "onPrimary": "#FFFFFF",
+    "accent": "#B48A4A",
+    "onAccent": "#1A140B",
+    "background": "#FDFDFB",
+    "surface": "#F6F5F1",
+    "text": "#15202B",
+    "textMuted": "#5A6672",
+    "border": "#E4E2DA"
+  },
+  "typography": {
+    "fontHeading": "frank-ruhl-libre",
+    "fontBody": "assistant",
+    "baseSize": 17,
+    "scale": 1.24,
+    "headingWeight": 600
+  },
+  "shape": {
+    "cardRadius": 16,
+    "buttonRadius": 999,
+    "fieldRadius": 10
+  },
+  "layout": {
+    "sectionSpacing": 104,
+    "maxWidth": 1152
+  },
+  "effects": {
+    "shadow": "soft"
+  }
+}
