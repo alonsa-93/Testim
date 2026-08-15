@@ -36,6 +36,14 @@ export default function RootLayout({
   return (
     <html lang="he" dir="rtl">
       <body style={themeToStyle(getDefaultTheme())}>
+        {/* חייב לרוץ ראשון, לפני הידרציה: מסמן שה-JS פעיל, כדי ש-CSS
+            יוכל להסתיר מצבי "לפני כניסה" של reveal רק כש-data-js קיים.
+            בלי JS (או לפני שהסקריפט רץ) התוכן תמיד גלוי — עוגת הנסיגה. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `document.documentElement.dataset.js=""`,
+          }}
+        />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link
           rel="preconnect"

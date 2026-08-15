@@ -12,7 +12,8 @@
     "surface": "#F6F5F1",
     "text": "#15202B",
     "textMuted": "#5A6672",
-    "border": "#E4E2DA"
+    "border": "#8F8977",
+    "danger": "#B91C1C"
   },
   "typography": {
     "fontHeading": "frank-ruhl-libre",
@@ -31,6 +32,16 @@
     "maxWidth": 1152
   },
   "effects": {
-    "shadow": "soft"
+    "shadow": "soft",
+    "background": "none",
+    "backgroundIntensity": 0.5,
+    "noise": false,
+    "cardStyle": "raised",
+    "glow": "none",
+    "buttonStyle": "flat",
+    "animation": {
+      "style": "rise",
+      "intensity": "subtle"
+    }
   }
 }

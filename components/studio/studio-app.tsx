@@ -7,7 +7,8 @@ import { pages, getDefaultPage } from "@/pages-data";
 import {
   FONTS,
   SHADOW_LABELS,
-  themeToStyle,
+  looksLikeTheme,
+  normalizeTheme,
   type FontId,
   type ShadowLevel,
   type Theme,
@@ -16,6 +17,7 @@ import {
 import { bestTextOn } from "@/lib/contrast";
 import { emptyPage, looksLikePage, normalizePage, type Page } from "@/lib/page";
 import { PageRenderer } from "@/components/page-renderer";
+import { ThemeScope } from "@/components/theme-scope";
 import { StructurePanel } from "@/components/studio/structure-panel";
 import { BlockEditor } from "@/components/studio/block-editor";
 import {
@@ -38,21 +40,6 @@ const viewports: Record<Viewport, { label: string; width: string }> = {
   tablet: { label: "טאבלט", width: "820px" },
   mobile: { label: "נייד", width: "400px" },
 };
-
-/** בדיקת צורה בסיסית לקובץ ערכה מיובא */
-function looksLikeTheme(obj: unknown): obj is Theme {
-  if (typeof obj !== "object" || obj === null) return false;
-  const t = obj as Record<string, unknown>;
-  return (
-    typeof t.id === "string" &&
-    typeof t.name === "string" &&
-    typeof t.colors === "object" &&
-    typeof t.typography === "object" &&
-    typeof t.shape === "object" &&
-    typeof t.layout === "object" &&
-    typeof t.effects === "object"
-  );
-}
 
 /** טעינת טיוטה שמורה (הסטודיו נטען ללא SSR, כך שזה בטוח) */
 function readDraft<T>(key: string, guard: (v: unknown) => v is T): T | null {
@@ -80,9 +67,10 @@ function download(data: unknown, filename: string) {
 }
 
 export function StudioApp() {
-  const [theme, setTheme] = useState<Theme>(
-    () => readDraft(THEME_DRAFT_KEY, looksLikeTheme) ?? structuredClone(getDefaultTheme())
-  );
+  const [theme, setTheme] = useState<Theme>(() => {
+    const draft = readDraft(THEME_DRAFT_KEY, looksLikeTheme);
+    return draft ? normalizeTheme(draft) : structuredClone(getDefaultTheme());
+  });
   const [page, setPage] = useState<Page>(() => {
     const draft = readDraft(PAGE_DRAFT_KEY, looksLikePage);
     return draft ? normalizePage(draft) : structuredClone(getDefaultPage());
@@ -212,7 +200,7 @@ export function StudioApp() {
         return;
       }
       if (looksLikeTheme(parsed)) {
-        setTheme(parsed);
+        setTheme(normalizeTheme(parsed));
         flash("ok", `הערכה "${parsed.name}" נטענה`);
         return;
       }
@@ -579,7 +567,10 @@ export function StudioApp() {
                     label="צל כרטיסים"
                     value={theme.effects.shadow}
                     onChange={(v) =>
-                      setTheme((t) => ({ ...t, effects: { shadow: v as ShadowLevel } }))
+                      setTheme((t) => ({
+                        ...t,
+                        effects: { ...t.effects, shadow: v as ShadowLevel },
+                      }))
                     }
                     options={(Object.keys(SHADOW_LABELS) as ShadowLevel[]).map((s) => ({
                       value: s,
@@ -609,10 +600,7 @@ export function StudioApp() {
               </div>
               {/* translateZ(0) גורם ל-position:fixed בתוך התצוגה (כפתור וואטסאפ)
                   להיצמד למסגרת התצוגה במקום לחלון של הסטודיו */}
-              <div
-                style={themeToStyle(theme)}
-                className="ds-scope [transform:translateZ(0)]"
-              >
+              <ThemeScope theme={theme} className="[transform:translateZ(0)]">
                 {page.blocks.length > 0 ? (
                   <PageRenderer page={page} />
                 ) : (
@@ -620,7 +608,7 @@ export function StudioApp() {
                     הדף ריק. הוסיפו בלוק ראשון מהפאנל.
                   </p>
                 )}
-              </div>
+              </ThemeScope>
             </div>
           </div>
         </main>

@@ -18,6 +18,7 @@
   --color-ink: var(--ds-color-text);
   --color-muted: var(--ds-color-text-muted);
   --color-line: var(--ds-color-border);
+  --color-danger: var(--ds-color-danger);
 
   --font-heading: var(--ds-font-heading);
   --font-body: var(--ds-font-body);
@@ -44,11 +45,474 @@
  * העטופה — ולא יירשו מה-body (שנושא את ערכת ברירת המחדל).
  */
 .ds-scope {
+  position: relative;
+  /* יוצר הקשר ערימה (stacking context) חדש כדי ששכבות הרקע הדקורטיביות
+     של ThemeFxLayers יישארו תמיד מאחורי התוכן, וכדי ש-mix-blend-mode
+     של שכבת ה-noise לא ידלוף אל מחוץ להיקף הערכה */
+  isolation: isolate;
   background-color: var(--ds-color-bg);
   color: var(--ds-color-text);
   font-family: var(--ds-font-body);
   font-size: var(--ds-fs-base);
   line-height: 1.65;
+}
+
+/**
+ * מנוע ה-reveal (components/fx/reveal.tsx)
+ * -----------------------------------------
+ * עוגת נסיגה בת 4 שכבות: (0) ה-HTML מהשרת תמיד גלוי. (1) מצב "מוסתר"
+ * דורש גם html[data-js] (הסקריפט ב-app/layout.tsx, רץ לפני הידרציה)
+ * וגם prefers-reduced-motion: no-preference — כך שמשתמש בלי JS או
+ * עם reduced-motion רואה תוכן גלוי תמיד, בלי תלות בקוד React בכלל.
+ * (2) IntersectionObserver מוסיף data-inview כשהאלמנט נכנס לתצוגה.
+ * אין keyframes כאן בכלל: אנחנו רק דורסים את מצב הבסיס הגלוי
+ * ל"מוסתר" תחת התנאים לעיל, ומגדירים transition — כך שברגע
+ * שה-selector מפסיק להתאים (data-inview מתווסף) האלמנט חוזר למצב
+ * הבסיס שלו בטרנזישן חלק. אי אפשר להישאר "תקוע בלתי-נראה".
+ */
+@media (prefers-reduced-motion: no-preference) {
+  /* מצב מוסתר בסיסי: שקיפות בלבד. word-stagger מוחרג — שם המכל עצמו
+     תמיד גלוי, וההסתרה קורית ברמת כל מילה (.split-word) בנפרד */
+  html[data-js] [data-animate]:not([data-inview]):not([data-animate="word-stagger"]) {
+    opacity: 0;
+  }
+
+  html[data-js] [data-animate="rise"]:not([data-inview]) {
+    translate: 0 var(--anim-distance, var(--ds-anim-distance, 24px));
+  }
+
+  html[data-js] [data-animate="slide-start"]:not([data-inview]) {
+    /* האתר תמיד dir=rtl: "מהתחלה" = מימין. ערך X חיובי = האלמנט
+       ממתין מוזז ימינה, וה-translate חוזר ל-0 כשהוא נכנס לתצוגה */
+    translate: var(--anim-distance, var(--ds-anim-distance, 24px)) 0;
+  }
+
+  html[data-js] [data-animate="scale"]:not([data-inview]) {
+    scale: 0.94;
+  }
+
+  html[data-js] [data-animate="blur"]:not([data-inview]) {
+    filter: blur(10px);
+  }
+
+  html[data-js] [data-animate="word-stagger"]:not([data-inview]) .split-word {
+    opacity: 0;
+    translate: 0 0.6em;
+    filter: blur(6px);
+  }
+
+  /* translate/scale כמאפיינים עצמאיים (לא transform) כדי שלא יתנגשו
+     עם transform-ים אחרים על אותו אלמנט (למשל tilt) */
+  [data-animate] {
+    transition-property: opacity, translate, scale, filter;
+    transition-duration: var(--anim-duration, var(--ds-anim-duration, 500ms));
+    transition-delay: var(--anim-delay, 0ms);
+    transition-timing-function: var(--ds-ease-spring, cubic-bezier(.22,1,.36,1));
+  }
+
+  .split-word {
+    display: inline-block;
+    transition-property: opacity, translate, filter;
+    transition-duration: var(--anim-duration, var(--ds-anim-duration, 500ms));
+    transition-timing-function: var(--ds-ease-spring, cubic-bezier(.22,1,.36,1));
+    /* עיכוב מדורג: --i מוזרק לכל מילה ב-SplitWords */
+    transition-delay: calc(
+      var(--anim-delay, 0ms) + var(--i, 0) * var(--anim-stagger, var(--ds-anim-stagger, 60ms))
+    );
+  }
+}
+
+/**
+ * אפקטי fx-* (3d-fx-report): הצללות, כרטיסים תלת-ממדיים, רקעים חיים,
+ * זוהר וברק. כל השכבות הדקורטיביות aria-hidden + pointer-events:none,
+ * צבע נגזר מ-color-mix על גבי משתני הערכה כדי שכל ערכה תתאים אוטומטית.
+ * לולאות מאנימות רק transform/opacity — לא filter/box-shadow/background-position
+ * (חוץ מ-text-shimmer, שם זה זעיר וממוקד טקסט בלבד).
+ */
+@property --fx-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+/* הרמה — צל hover על פסאודו-אלמנט, לא על האלמנט עצמו, כדי שהמעבר
+   יהיה רק opacity+transform ולא ישנה layout */
+.fx-lift {
+  position: relative;
+  transition: translate 0.25s var(--ds-ease-out-soft, cubic-bezier(.2,.7,.2,1));
+}
+.fx-lift::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: 0 24px 48px -16px rgb(var(--ds-fx-shadow-rgb, 2 8 23) / 0.35);
+  opacity: 0;
+  transition: opacity 0.25s var(--ds-ease-out-soft, cubic-bezier(.2,.7,.2,1));
+  pointer-events: none;
+}
+.fx-lift:hover {
+  translate: 0 -4px;
+}
+.fx-lift:hover::after {
+  opacity: 1;
+}
+
+/* כפתור תלת-ממדי: קצה כהה מתחת (--edge), נלחץ פיזית בלחיצה */
+.fx-btn-3d {
+  --edge: color-mix(in srgb, var(--ds-color-primary) 55%, black);
+  box-shadow:
+    0 var(--ds-fx-btn-depth, 4px) 0 var(--edge),
+    0 calc(var(--ds-fx-btn-depth, 4px) + 8px) 20px -6px rgb(0 0 0 / 0.35);
+  transition:
+    translate 0.12s var(--ds-ease-out-soft, cubic-bezier(.2,.7,.2,1)),
+    box-shadow 0.12s var(--ds-ease-out-soft, cubic-bezier(.2,.7,.2,1));
+}
+.fx-btn-3d:hover {
+  translate: 0 -1px;
+}
+.fx-btn-3d:active {
+  translate: 0 var(--ds-fx-btn-depth, 4px);
+  box-shadow: 0 0 0 var(--edge);
+}
+
+/* טילט תלת-ממדי: TiltCard כותב --rx/--ry/--mx/--my ב-pointermove.
+   כאן (ולא ברכיב) זה חייב transform משולב (לא translate/scale
+   נפרדים) כי perspective+rotateX+rotateY הם ערך transform אחד */
+.fx-tilt {
+  position: relative;
+  transform-style: preserve-3d;
+  transform: perspective(900px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  transition: transform 0.15s var(--ds-ease-out-soft, cubic-bezier(.2,.7,.2,1));
+}
+.fx-tilt-glare {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    320px circle at var(--mx, 50%) var(--my, 50%),
+    color-mix(in srgb, white 25%, transparent),
+    transparent 60%
+  );
+  opacity: 0;
+  transition: opacity 0.25s var(--ds-ease-out-soft, cubic-bezier(.2,.7,.2,1));
+  pointer-events: none;
+}
+.fx-tilt:hover .fx-tilt-glare {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fx-tilt {
+    transform: none;
+  }
+}
+
+/* אורורה: בלי filter:blur בכלל — הרכות אפויה בתוך הגרדיאנט (עצירה
+   ב-60% שקיפות). מיקום דרך inset-* לוגי כדי לעבוד נכון גם ב-RTL */
+.fx-aurora {
+  position: absolute;
+  inset: 0;
+}
+.fx-aurora i {
+  position: absolute;
+  inset-block-start: -20%;
+  inset-inline-end: -10%;
+  width: 60vmax;
+  height: 60vmax;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--ds-color-primary) calc(var(--ds-fx-bg-intensity, 0.5) * 55%), transparent) 0%,
+    transparent 60%
+  );
+  will-change: translate, scale;
+  animation: fx-aurora-float 26s ease-in-out infinite alternate;
+}
+.fx-aurora i:nth-child(2) {
+  inset-inline-end: auto;
+  inset-inline-start: -15%;
+  inset-block-start: 30%;
+  width: 50vmax;
+  height: 50vmax;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--ds-color-accent) calc(var(--ds-fx-bg-intensity, 0.5) * 55%), transparent) 0%,
+    transparent 60%
+  );
+  animation-duration: 34s;
+  animation-direction: alternate-reverse;
+}
+.fx-aurora i:nth-child(3) {
+  inset-inline-end: 15%;
+  inset-block-start: 45%;
+  width: 42vmax;
+  height: 42vmax;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--ds-color-primary) calc(var(--ds-fx-bg-intensity, 0.5) * 40%), transparent) 0%,
+    transparent 60%
+  );
+  animation-duration: 30s;
+}
+/* וריאנט "כתמי אור": בלובים קטנים ונפרדים יותר במקום שכבות ענקיות */
+.fx-aurora--orbs i {
+  width: 30vmax;
+  height: 30vmax;
+  animation-duration: 20s;
+}
+@keyframes fx-aurora-float {
+  from {
+    translate: 0 0;
+    scale: 1;
+  }
+  to {
+    translate: -6% 4%;
+    scale: 1.08;
+  }
+}
+
+/* נקודות/רשת: סטטי לגמרי, בלי JS ובלי אנימציה. ה-mask-image יוצר את
+   "דהיית הוורסל" — צפוף למעלה, נעלם לכיוון תחתית הסקשן */
+.fx-bg-dots {
+  background-image: radial-gradient(
+    color-mix(in srgb, var(--ds-color-text) calc(var(--ds-fx-bg-intensity, 0.5) * 22%), transparent) 1px,
+    transparent 1px
+  );
+  background-size: 24px 24px;
+  mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, black 55%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, black 55%, transparent 100%);
+}
+.fx-bg-grid {
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--ds-color-text) calc(var(--ds-fx-bg-intensity, 0.5) * 18%), transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--ds-color-text) calc(var(--ds-fx-bg-intensity, 0.5) * 18%), transparent) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, black 55%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, black 55%, transparent 100%);
+}
+
+/* גרעיניות-פילם: data-URI סטטי (feTurbulence), לעולם לא מונפש.
+   isolation:isolate על ההורה (.ds-scope) עוצר את mix-blend-mode כאן */
+.fx-noise {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  background-size: 160px;
+  opacity: var(--ds-fx-noise-opacity, 0);
+  mix-blend-mode: overlay;
+}
+
+/* ספוטלייט: SpotlightGroup כותב --mx/--my על כל ילדי fx-spot */
+.fx-spot {
+  position: relative;
+}
+.fx-spot::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    280px circle at var(--mx, 50%) var(--my, 50%),
+    color-mix(in srgb, var(--ds-fx-glow-color, var(--ds-color-primary)) 14%, transparent),
+    transparent 70%
+  );
+  opacity: 0;
+  transition: opacity 0.25s var(--ds-ease-out-soft, cubic-bezier(.2,.7,.2,1));
+  pointer-events: none;
+}
+.fx-spot:hover::before {
+  opacity: var(--ds-fx-glow-intensity, 0.6);
+}
+
+/* מסגרת-ספוטלייט: טבעת אור שעוקבת אחרי הסמן על גבול הכרטיס */
+.fx-spot-border {
+  position: relative;
+}
+.fx-spot-border::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: radial-gradient(
+    220px circle at var(--mx, 50%) var(--my, 50%),
+    var(--ds-fx-glow-color, var(--ds-color-primary)),
+    transparent 70%
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: var(--ds-fx-glow-intensity, 0.6);
+  pointer-events: none;
+}
+
+/* מסגרת-אור נעה (beam): נע על מסלול המלבן של הכרטיס. עם fallback
+   של טריז חרוטי (conic) לדפדפנים בלי תמיכה ב-offset-path */
+.fx-beam {
+  position: relative;
+}
+.fx-beam-dot {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  width: 80px;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, var(--ds-fx-glow-color, var(--ds-color-primary)), transparent);
+  offset-path: rect(0 auto auto 0 round var(--ds-radius-card, 16px));
+  animation: fx-beam-travel 6s linear infinite;
+  pointer-events: none;
+}
+@keyframes fx-beam-travel {
+  to {
+    offset-distance: 100%;
+  }
+}
+@supports not (offset-path: rect(0 0 0 0)) {
+  .fx-beam-dot {
+    display: none;
+  }
+  .fx-beam::before {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    background: conic-gradient(
+      from var(--fx-angle),
+      transparent,
+      var(--ds-fx-glow-color, var(--ds-color-primary)),
+      transparent 40%
+    );
+    animation: fx-beam-spin 6s linear infinite;
+    pointer-events: none;
+  }
+}
+@keyframes fx-beam-spin {
+  to {
+    --fx-angle: 360deg;
+  }
+}
+
+/* הילה חרוטית נעה — קטנה ומוצנעת (למשל מאחורי CTA), לא ברקע שלם.
+   isolation:isolate כדי ש-z-index:-1 של הפסאודו-אלמנט יישאר מאחורי
+   התוכן הפנימי של fx-halo בלבד, ולא יברח להקשר ערימה חיצוני */
+.fx-halo {
+  position: relative;
+  isolation: isolate;
+}
+.fx-halo::before {
+  content: "";
+  position: absolute;
+  inset: -18%;
+  z-index: -1;
+  border-radius: inherit;
+  background: conic-gradient(from var(--fx-angle), var(--ds-color-primary), var(--ds-color-accent), var(--ds-color-primary));
+  mask-image: radial-gradient(closest-side, black 20%, transparent 78%);
+  -webkit-mask-image: radial-gradient(closest-side, black 20%, transparent 78%);
+  animation: fx-halo-spin 8s linear infinite;
+  pointer-events: none;
+}
+@keyframes fx-halo-spin {
+  to {
+    --fx-angle: 360deg;
+  }
+}
+
+/* טקסט מנצנץ: בסיס גרדיאנט סטטי — כך שגם בלי אנימציה הטקסט קריא;
+   האנימציה עצמה מותרת רק תחת no-preference, וכיוונה הפוך ב-RTL */
+.text-shimmer {
+  background-image: linear-gradient(
+    100deg,
+    var(--ds-color-text) 42%,
+    var(--ds-fx-glow-color, var(--ds-color-accent)) 50%,
+    var(--ds-color-text) 58%
+  );
+  background-size: 250% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .text-shimmer {
+    animation: fx-shimmer 3s linear infinite;
+  }
+  [dir="rtl"] .text-shimmer {
+    animation-direction: reverse;
+  }
+}
+@keyframes fx-shimmer {
+  to {
+    background-position: -250% 0;
+  }
+}
+
+/* מסלול פס נגלל (marquee): הפרימיטיב בלבד — הבלוק שמשכפל את
+   הפריטים ומוסיף כפתור השהיה מגיע בשלב הבא. האתר תמיד dir=rtl,
+   ולכן ה-translate נע לכיוון X חיובי ישירות (ראו repos-report) */
+.fx-marquee-track {
+  display: flex;
+  width: max-content;
+  animation: fx-marquee 32s linear infinite;
+}
+@keyframes fx-marquee {
+  from {
+    translate: 0 0;
+  }
+  to {
+    translate: 50% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fx-marquee-track {
+    animation: none;
+    flex-wrap: wrap;
+  }
+}
+
+/* זכוכית (glass): opt-in בלבד, עם הנחתת טשטוש במובייל */
+.fx-glass {
+  background: color-mix(in srgb, var(--ds-color-surface) 55%, transparent);
+  backdrop-filter: blur(12px) saturate(1.4);
+  -webkit-backdrop-filter: blur(12px) saturate(1.4);
+  border: 1px solid color-mix(in srgb, white 18%, transparent);
+}
+@media (max-width: 640px) {
+  .fx-glass {
+    backdrop-filter: blur(8px) saturate(1.2);
+    -webkit-backdrop-filter: blur(8px) saturate(1.2);
+  }
+}
+
+/**
+ * מיפוי data-fx-card מהערכה (דרך ThemeScope) אל קלאס .ds-card שבלוקים
+ * יאמצו בשלב ב'. היום שום דבר לא נושא .ds-card עדיין — הכללים כאן
+ * לא פעילים בפועל, רק מוכנים.
+ */
+.ds-scope[data-fx-card="raised"] .ds-card {
+  box-shadow: var(--ds-shadow-card);
+}
+.ds-scope[data-fx-card="flat"] .ds-card {
+  box-shadow: none;
+  border: 1px solid var(--ds-color-border);
+}
+.ds-scope[data-fx-card="glass"] .ds-card {
+  background: color-mix(in srgb, var(--ds-color-surface) 55%, transparent);
+  backdrop-filter: blur(12px) saturate(1.4);
+  -webkit-backdrop-filter: blur(12px) saturate(1.4);
+  border: 1px solid color-mix(in srgb, white 18%, transparent);
+}
+.ds-scope[data-fx-card="tilt"] .ds-card {
+  transform-style: preserve-3d;
+}
+/* [data-fx-motion] שמור לשלב הבא — עדיין לא בשימוש */
+
+/* מתג כיבוי בסטודיו: כשעורכים טקסט, קופצים לכיבוי אנימציה מיידי
+   (כדי שהתצוגה החיה לא תרעד תוך כדי הקלדה) */
+[data-studio-motion="off"] :is([data-animate], [data-scrub], .fx-aurora i, .fx-beam-dot) {
+  transition: none !important;
+  animation: none !important;
+  opacity: 1 !important;
+  translate: none;
+  scale: none;
+  filter: none;
 }
 
 @layer base {
@@ -84,6 +548,9 @@
       animation-duration: 0.01ms !important;
       transition-duration: 0.01ms !important;
       scroll-behavior: auto !important;
+      /* בלי זה, לולאה אינסופית (אורורה/מרקיז) ב-0.01ms מתרסקת לסופת
+         ציור — האלמנט מסיים ומתחיל מיליוני פעמים בשנייה */
+      animation-iteration-count: 1 !important;
     }
   }
 }

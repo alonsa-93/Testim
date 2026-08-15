@@ -1,8 +1,8 @@
-import type { ComponentPropsWithoutRef, ReactNode } from "react";
+import { cloneElement, isValidElement, type ComponentPropsWithoutRef, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
 
 const inputBase =
-  "w-full rounded-field border border-line bg-bg px-4 py-3 text-ink placeholder:text-muted/70 transition-colors focus:border-primary focus:outline-none aria-invalid:border-[#E5484D]";
+  "w-full rounded-field border border-line bg-bg px-4 py-3 text-ink placeholder:text-muted/70 transition-colors focus:border-primary focus:outline-none aria-invalid:border-danger";
 
 export function Input({
   className,
@@ -23,6 +23,8 @@ export function Textarea({
 /**
  * עטיפת שדה טופס נגישה: label מקושר, סימון חובה,
  * והודעת שגיאה עם role="alert" שמוכרז לקורא מסך.
+ * ה-"*" הוויזואלי מוסתר מקוראי מסך (aria-hidden) כי חובה מתוקשרת
+ * במפורש דרך aria-required על שדה הקלט עצמו, לא רק ויזואלית.
  */
 export function Field({
   id,
@@ -42,15 +44,17 @@ export function Field({
       <label htmlFor={id} className="block text-sm font-semibold text-ink">
         {label}
         {required && (
-          <span className="text-[#E5484D]" aria-hidden="true">
+          <span className="text-danger" aria-hidden="true">
             {" "}
             *
           </span>
         )}
       </label>
-      {children}
+      {required && isValidElement<{ "aria-required"?: boolean }>(children)
+        ? cloneElement(children, { "aria-required": true })
+        : children}
       {error && (
-        <p id={`${id}-error`} role="alert" className="text-sm font-medium text-[#E5484D]">
+        <p id={`${id}-error`} role="alert" className="text-sm font-medium text-danger">
           {error}
         </p>
       )}

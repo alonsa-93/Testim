@@ -39,6 +39,9 @@ export function ContrastPanel({
     { label: "טקסט על כרטיסים", fg: c.text, bg: c.surface },
     { label: "טקסט על כפתור ראשי", fg: c.onPrimary, bg: c.primary, fixKey: "onPrimary" },
     { label: "טקסט על תגית מבטא", fg: c.onAccent, bg: c.accent, fixKey: "onAccent" },
+    { label: "טקסט שגיאה על רקע העמוד", fg: c.danger, bg: c.background },
+    { label: "טקסט שגיאה על כרטיסים", fg: c.danger, bg: c.surface },
+    { label: "גבול רכיבים (שדות/כרטיסים) על רקע העמוד", fg: c.border, bg: c.background },
   ];
 
   return (

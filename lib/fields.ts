@@ -15,6 +15,24 @@ export type FieldDef =
   | { key: string; type: "boolean"; label: string }
   /** רשימת מחרוזות פשוטה (למשל: נקודות בתבליט) */
   | { key: string; type: "strings"; label: string; itemLabel: string }
+  /** בחירה מרשימת אפשרויות סגורה (למשל: סוג אנימציה, סגנון רקע) */
+  | {
+      key: string;
+      type: "select";
+      label: string;
+      options: { value: string; label: string }[];
+      hint?: string;
+    }
+  /** מספר בטווח סגור, מוצג כסליידר (למשל: משך אנימציה, עוצמת רקע) */
+  | {
+      key: string;
+      type: "number";
+      label: string;
+      min: number;
+      max: number;
+      step?: number;
+      unit?: string;
+    }
   /** רשימה של פריטים מורכבים (למשל: המלצות, מסלולי מחיר) */
   | {
       key: string;
@@ -38,6 +56,10 @@ export function emptyValueFor(field: FieldDef): unknown {
       return [];
     case "list":
       return [];
+    case "select":
+      return field.options[0]?.value ?? "";
+    case "number":
+      return field.min;
     default:
       return "";
   }

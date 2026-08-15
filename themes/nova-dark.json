@@ -12,7 +12,8 @@
     "surface": "#151C33",
     "text": "#EEF2FB",
     "textMuted": "#9AA7C7",
-    "border": "#273356"
+    "border": "#5A72B8",
+    "danger": "#F87171"
   },
   "typography": {
     "fontHeading": "heebo",
@@ -31,6 +32,16 @@
     "maxWidth": 1200
   },
   "effects": {
-    "shadow": "strong"
+    "shadow": "strong",
+    "background": "none",
+    "backgroundIntensity": 0.5,
+    "noise": false,
+    "cardStyle": "raised",
+    "glow": "none",
+    "buttonStyle": "flat",
+    "animation": {
+      "style": "rise",
+      "intensity": "subtle"
+    }
   }
 }

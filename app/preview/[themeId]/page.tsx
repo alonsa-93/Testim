@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PageRenderer } from "@/components/page-renderer";
-import { themeToStyle } from "@/lib/theme";
+import { ThemeScope } from "@/components/theme-scope";
 import { themes, getTheme } from "@/themes";
 import { getDefaultPage } from "@/pages-data";
 
@@ -35,8 +35,8 @@ export default async function PreviewPage({
   if (!theme) notFound();
 
   return (
-    <div style={themeToStyle(theme)} className="ds-scope min-h-screen">
+    <ThemeScope theme={theme} className="min-h-screen">
       <PageRenderer page={getDefaultPage()} />
-    </div>
+    </ThemeScope>
   );
 }

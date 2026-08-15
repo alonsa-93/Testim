@@ -79,32 +79,58 @@ themes/<ערכה>.json     →  איך הכול נראה
 
 ## הוספת בלוק חדש למדף
 
-קובץ אחד + שורה אחת. הבלוק מצהיר על תוכן ברירת מחדל ועל השדות שניתן
-לערוך, והסטודיו בונה לו ממשק עריכה לבד:
+קובץ אחד + שתי שורות ב-registry (import + הוספה למערך). הבלוק מצהיר על
+תוכן ברירת מחדל ועל השדות שניתן לערוך, והסטודיו בונה לו ממשק עריכה לבד.
+הדוגמה כאן היא בלוק "צוות" — שלא קיים היום במדף ה-15, כדי שאפשר יהיה
+לבצע אותה מילה במילה:
 
 ```tsx
-// components/blocks/gallery.tsx
-export const galleryBlock: BlockDef = {
-  type: "gallery",
-  label: "גלריית עבודות",
-  description: "רשת תמונות מהפרויקטים",
-  component: Gallery,
+// components/blocks/team.tsx
+export const teamBlock: BlockDef = {
+  type: "team",
+  label: "הצוות",
+  description: "רשת כרטיסי חברי צוות",
+  component: Team,
   defaults: defaults as unknown as BlockContent,
   fields: [
     { key: "title", type: "text", label: "כותרת" },
-    { key: "items", type: "list", label: "התמונות", itemLabel: "תמונה",
-      titleKey: "caption",
-      fields: [{ key: "caption", type: "text", label: "כיתוב" }] },
+    { key: "members", type: "list", label: "חברי הצוות", itemLabel: "חבר צוות",
+      titleKey: "name",
+      fields: [
+        { key: "name", type: "text", label: "שם" },
+        { key: "role", type: "text", label: "תפקיד" },
+      ] },
   ],
 };
 ```
 
-ואז מוסיפים `galleryBlock` למערך ב-`components/blocks/registry.ts`.
+```ts
+// components/blocks/registry.ts
+import { teamBlock } from "./team";     // 1. שורת import למעלה
+
+export const blockDefs: BlockDef[] = [
+  // ...
+  teamBlock,                            // 2. הוספה למערך
+];
+```
 
 ## הוספת ערכת עיצוב ללקוח
 
-בסטודיו, טאב **עיצוב** ← לכוונן ← **הורדת הערכה** ← לשמור ב-`themes/`
-ולהוסיף שורה ב-`themes/index.ts`. הערכה תופיע כאפשרות בסטודיו וב-`/preview`.
+בסטודיו, טאב **עיצוב** ← לכוונן ← **הורדת הערכה** ← לשמור ב-`themes/`.
+אותו דפוס שתי-שורות כמו בלוק:
+
+```ts
+// themes/index.ts
+import leviClinic from "./levi-clinic.json";   // 1. שורת import למעלה
+
+export const themes: Theme[] = [
+  defaultTheme as Theme,
+  novaDark as Theme,
+  leviClinic as Theme,                          // 2. הוספה למערך
+].map(normalizeTheme);
+```
+
+הערכה תופיע כאפשרות בסטודיו וב-`/preview`.
 
 ## טיפים לעריכה
 

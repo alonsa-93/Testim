@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PageRenderer } from "@/components/page-renderer";
-import { themeToStyle } from "@/lib/theme";
+import { ThemeScope } from "@/components/theme-scope";
 import { getTheme, getDefaultTheme } from "@/themes";
 import { pages, getPage } from "@/pages-data";
 
@@ -39,8 +39,8 @@ export default async function PublishedPage({
 
   const theme = getTheme(page.themeId) ?? getDefaultTheme();
   return (
-    <div style={themeToStyle(theme)} className="ds-scope min-h-screen">
+    <ThemeScope theme={theme} className="min-h-screen">
       <PageRenderer page={page} />
-    </div>
+    </ThemeScope>
   );
 }

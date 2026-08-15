@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { PageRenderer } from "@/components/page-renderer";
 import { ThemeSwitcher } from "@/components/theme-switcher";
-import { themeToStyle } from "@/lib/theme";
+import { ThemeScope } from "@/components/theme-scope";
 import { getTheme, getDefaultTheme } from "@/themes";
 import { getDefaultPage } from "@/pages-data";
 
@@ -15,9 +15,9 @@ export const metadata: Metadata = {
 export default function Home() {
   const theme = getTheme(page.themeId) ?? getDefaultTheme();
   return (
-    <div style={themeToStyle(theme)} className="ds-scope min-h-screen">
+    <ThemeScope theme={theme} className="min-h-screen">
       <PageRenderer page={page} />
       <ThemeSwitcher />
-    </div>
+    </ThemeScope>
   );
 }

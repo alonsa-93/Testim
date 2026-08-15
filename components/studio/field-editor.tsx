@@ -3,6 +3,7 @@
 import { useId, useState } from "react";
 import { ICONS } from "@/components/icon-registry";
 import { emptyItem, type FieldDef } from "@/lib/fields";
+import { SelectField, SliderField } from "@/components/studio/controls";
 
 /**
  * עורך שדות גנרי: מקבל סכמת שדות של בלוק ובונה ממנה טופס עריכה.
@@ -63,6 +64,34 @@ export function FieldEditor({
           ))}
         </select>
       </div>
+    );
+  }
+
+  if (field.type === "select") {
+    return (
+      <div className="flex flex-col gap-1.5">
+        <SelectField
+          label={field.label}
+          value={String(value ?? field.options[0]?.value ?? "")}
+          onChange={(v) => onChange(v)}
+          options={field.options}
+        />
+        {field.hint && <p className="text-xs text-slate-400">{field.hint}</p>}
+      </div>
+    );
+  }
+
+  if (field.type === "number") {
+    return (
+      <SliderField
+        label={field.label}
+        value={typeof value === "number" ? value : field.min}
+        onChange={(v) => onChange(v)}
+        min={field.min}
+        max={field.max}
+        step={field.step}
+        unit={field.unit}
+      />
     );
   }
 
