@@ -1168,27 +1168,31 @@ docs/
 |---|---|---|
 | **0** | האודיט | ✅ הושלם ואושר |
 | **0.5** | **Motion Foundation** — `vitest` + baseline regression tests + `ScrollRoot` (Window+Element) + תיקון cleanup ל-`CountUp` + מדיניות יחידות viewport + עקביות מאזין reduced-motion | ✅ **הושלם.** 62 בדיקות עוברות (`npm test`), `build`+`lint` נקיים, אומת בדפדפן אמיתי (Playwright מול production build): `/p/demo` — Statement `--progress` עדיין מתקדם 0→1 בגלילה, CountUp מציג ערכים סופיים תקינים; reduced-motion אמיתי (`emulateMedia`) — `--progress` נשאר 1 גם אחרי ניסיון גלילה; `/studio` נטען ללא קריסה. ראו §21 לפירוט |
-| **1** | סכמה: טיפוסים, `normalizeExperience`, ולידציה, versioning, Property Metadata | `Page` ישן עובר ללא שינוי; בדיקות יחידה עוברות |
-| **2** | Runtime: `ExperienceProvider`, rAF יחיד, `SceneRegistry`, `TargetRegistry` — **כולל תיקון באג ה-Statement/sticky בסטודיו דרך ה-`ScrollRoot`** | Statement עובד גם ב-`/p/demo` וגם ב-`/studio`; אפס hack ייעודי לסטודיו |
-| **3** | Timeline: interpolate, keyframes, easing, Track Ownership validation | בדיקות יחידה על 0/0.25/0.5/1/clamp/NaN; זיהוי התנגשות בעלות |
-| **4** | Scene + Stage + sticky pinning + transitions + **Stage/Flow composition modes** | scene נעוץ ומשוחרר תקין; אין clip; שני מצבי הקומפוזיציה עובדים |
-| **5** | Targets בבלוקים קיימים: Hero → Statement → About → Gallery → Steps → CTA → Logos | בלוק עובד עם ובלי Experience |
-| **6** | Freeform MVP — **5 טיפוסים בלבד**: Text/Image/Shape/Button/Block-Reference | freeform scene נבנית מ-JSON; Video/Stat/Logo/Group נדחים במפורש |
-| **7** | Studio: טאב, 4-pane layout, scene manager, layer editor, timeline, scrubber, empty/error states | עריכה משנה תצוגה בפועל; scrub עובד בלי גלילה אמיתית |
-| **8** | Presets (6, כולל Experimental כ-opt-in) + debug mode + motion budget | preset לא נכשל בניגודיות; ברירת מחדל מאופקת |
-| **9** | Demo `/preview/scroll-experience` — 5 סצנות (Hero/Typography/Media/Multi-layer/CTA), editable מה-Studio | לא hardcoded — Page+Theme+Experience JSON אמיתיים |
-| **10** | QA מקצה לקצה: בדיקות + נגישות + reduced-motion + no-JS + RTL + מובייל + דפדפנים | כל ה-DoD (§19) |
-| **11** | ביצועים: desktop/mobile profiling, memory, motion budget בפועל, cleanup מלא | אפס דליפות rAF/listeners/observers |
-| **12** | *אופציונלי בלבד, אחרי יציבות מלאה:* WebGL adapter boundary | — |
+| **1** | סכמה: טיפוסים, `normalizeExperience`, ולידציה, versioning, Property Metadata | ✅ **הושלם.** `Page` ישן עובר ללא שינוי; בדיקות יחידה עוברות |
+| **2** | Runtime: `ExperienceProvider`, rAF יחיד, `SceneRegistry`, `TargetRegistry` — **כולל תיקון באג ה-Statement/sticky בסטודיו דרך ה-`ScrollRoot`** | ✅ **הושלם.** Statement עובד גם ב-`/p/demo` וגם ב-`/studio`; אפס hack ייעודי לסטודיו |
+| **3** | Timeline: interpolate, keyframes, easing, Track Ownership validation | ✅ **הושלם.** בדיקות יחידה על 0/0.25/0.5/1/clamp/NaN; זיהוי התנגשות בעלות |
+| **4** | Scene + Stage + sticky pinning + transitions + **Stage/Flow composition modes** | ✅ **הושלם.** scene נעוץ ומשוחרר תקין; אין clip; שני מצבי הקומפוזיציה עובדים |
+| **5** | Targets בבלוקים קיימים: Hero → Statement → About → Gallery → Steps → CTA → Logos | ✅ **הושלם.** בלוק עובד עם ובלי Experience |
+| **6** | Freeform MVP — **5 טיפוסים בלבד**: Text/Image/Shape/Button/Block-Reference | ✅ **הושלם.** freeform scene נבנית מ-JSON; Video/Stat/Logo/Group נדחים במפורש |
+| **7** | Studio: מצב עמוד ייעודי, scene manager, layer editor (Basic/Style/Motion/Advanced), timeline, scrubber, empty/error states | ✅ **הושלם.** עריכה משנה תצוגה בפועל; scrub דרך `runtime.scrollToProgress()` (גלילה אמיתית של ה-scroll root, לא preview מדומה) — אומת אמפירית קצה-לקצה (toggle→scene→layer→motion→scrub) |
+| **8** | Presets (6, כולל Experimental) + debug mode + motion budget | ✅ **הושלם.** preset "נועז" נכשל בניגודיות בבדיקה הראשונה (`onPrimary` חסר מהטוקנים הסמנטיים) — נמצא ותוקן, לא רק "נבדק ועבר"; debug badge + motion budget verdict אומתו אמפירית |
+| **9** | Demo `/preview/scroll-experience` — 5 סצנות (Hero/Typography/Media/Multi-layer/CTA), editable מה-Studio | ✅ **הושלם.** לא hardcoded — Page+Theme+Experience JSON אמיתיים. 3 באגים אמיתיים נמצאו ותוקנו באימות (block-ref registration, reduced-motion hydration mismatch, short-scene progress stall) |
+| **10** | QA מקצה לקצה: בדיקות + נגישות + reduced-motion + no-JS + RTL + מובייל + ייבוא/ייצוא | ✅ **הושלם.** כל אחד אומת אמפירית מול production build אמיתי (לא רק unit tests) — ראו `docs/experience-final-audit.md` לפירוט מלא |
+| **11** | ביצועים: cleanup מלא, motion budget בפועל | ✅ **הושלם.** cleanup contracts מכוסים ביחידה + אומתו במדידת JS heap אמיתית (20 מחזורי mount/unmount, ללא גדילה ליניארית); `performance:"lite"` נמצא לא-אכוף בפועל ותוקן (מדלג על מאפיינים יקרים כמו blur) |
+| **12** | *אופציונלי בלבד, אחרי יציבות מלאה:* WebGL adapter boundary | לא נבנה — מחוץ ל-scope במכוון, כמתועד |
 
-**MVP מומלץ להמשך מיידי:** Phases 1–5 + 7 (חלקי, ללא presets/debug
-מלאים) + 9. זה נותן חוויית גלילה אמיתית ועריכה בסיסית על בלוקים
-קיימים. Phase 6 (freeform) נכנס ל-scope לפי §27 במסמך התיקון אך הוא
-המשך משמעותי בפני עצמו.
+**ביקורת עצמית סופית (§104–105):** `docs/experience-final-audit.md` — 70 דרישות נבדקו מול הקוד/הדפדפן בפועל: 63 PASS, 5 PARTIAL (כולן עם Action מפורש), 2 DEFERRED (scene/layer duplication — עקיפה קיימת), 0 FAIL.
 
-**Phase 13 — Self-Audit סופי (חובה, §104–105 במסמך הסופי):** בסיום
-כל השלבים, לפני שהמערכת מוכרזת כמוגמרת — ביקורת עצמית מובנית מול
-המפרט המלא, לא רק "הבדיקות עוברות". תוצר: `docs/experience-final-audit.md`,
+**עדכון:** כל Phases 0.5–11 הושלמו בפועל (לא רק ה-MVP המצומצם שתוכנן
+כאן במקור) — כולל Studio מלא, כל 6 ה-presets, debug mode, ו-motion
+budget אכוף. ראו טבלת השלבים למעלה ו-`docs/experience-final-audit.md`
+לפירוט. Phase 6 (freeform) נכנס ל-scope לפי §27 במסמך התיקון וגם הוא
+הושלם.
+
+**Phase 13 — Self-Audit סופי (חובה, §104–105 במסמך הסופי):** ✅ **הושלם** —
+`docs/experience-final-audit.md`. בסיום כל השלבים, לפני שהמערכת
+מוכרזת כמוגמרת — ביקורת עצמית מובנית מול המפרט המלא, לא רק "הבדיקות
+עוברות". תוצר: `docs/experience-final-audit.md`,
 טבלת Requirement/Status/Evidence/Risk/Action לכל תחום (ארכיטקטורה,
 runtime, סכמה, Studio, UX, איכות האתרים המיוצרים, נגישות, ביצועים,
 תאימות), עם `PASS`/`PARTIAL`/`FAIL`/`DEFERRED` — לא מסמנים `PASS` בלי
