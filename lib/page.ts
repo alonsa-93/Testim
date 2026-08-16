@@ -1,4 +1,6 @@
 import type { BlockContent } from "./fields";
+import { normalizeExperience } from "./experience-normalize";
+import type { ExperienceConfig } from "./experience";
 
 /**
  * מודל הדף.
@@ -27,6 +29,13 @@ export interface Page {
     description: string;
   };
   blocks: PageBlockInstance[];
+  /**
+   * שכבת Experience — Phase 1, אופציונלית לחלוטין (docs/experience-audit.md
+   * §5.1). דף בלי השדה הזה ממשיך להיות Page תקין ב-100%; looksLikePage
+   * לא דורש אותו, וקוד הרינדור הקיים (PageRenderer, כל 17 הבלוקים)
+   * לא יודע שהוא קיים בכלל.
+   */
+  experience?: ExperienceConfig;
 }
 
 /** בדיקת צורה בסיסית לקובץ דף מיובא */
@@ -69,6 +78,14 @@ export function normalizePage(p: Page): Page {
     }
     blocks.push(block);
   }
+
+  // experience נורמל רק אם השדה קיים בכלל בקלט -- דף ישן בלי experience
+  // ממשיך בלי השדה לגמרי, לא מקבל ניחוש/ברירת-מחדל מזויפת (R7).
+  // הקצאה מפורשת (לא spread מותנה) בכוונה: אחרת ערך גולמי לא תקין
+  // מ-p.experience (למשל מחרוזת שבורה) היה שורד דרך ה-`...p` הקודם
+  // גם כש-normalizeExperience נופל בחזרה ל-undefined.
+  const experience = normalizeExperience(p.experience);
+
   return {
     ...p,
     meta: {
@@ -76,6 +93,7 @@ export function normalizePage(p: Page): Page {
       description: p.meta?.description ?? "",
     },
     blocks,
+    experience,
   };
 }
 
