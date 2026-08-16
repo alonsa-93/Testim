@@ -107,7 +107,15 @@ export const PROPERTY_METADATA: Record<AnimatableProp, PropertyMetadata> = {
 
 /** ממיר טוקן סמנטי (primary/accent/...) ל-CSS var של הערכה הפעילה;
  * כל דבר אחר (hex/rgb/...) עובר כמו שהוא -- Experience לא מגדיר
- * מערכת טוקנים שנייה, אלא קורא מ-Theme הקיים (§65/§70 במסמך התיקון) */
+ * מערכת טוקנים שנייה, אלא קורא מ-Theme הקיים (§65/§70 במסמך התיקון).
+ *
+ * onPrimary/onAccent (Phase 8 QA, §19 DoD: "preset לא נכשל בניגודיות"):
+ * חסרו כאן במקור למרות שקיימים ב-Theme (--ds-color-on-primary/-on-accent,
+ * lib/theme.ts) ומחושבים במיוחד לניגודיות תקינה על רקע primary/accent
+ * (ContrastPanel/bestTextOn בסטודיו) -- בלעדיהם, layer שרוצה טקסט קריא
+ * על רקע primary (בדיוק המקרה של preset "נועז", lib/experience-presets.ts)
+ * לא היה יכול להגיע לצבע הנכון דרך הטוקנים הסמנטיים בכלל.
+ */
 const SEMANTIC_COLOR_VARS: Record<string, string> = {
   primary: "var(--ds-color-primary)",
   accent: "var(--ds-color-accent)",
@@ -116,6 +124,8 @@ const SEMANTIC_COLOR_VARS: Record<string, string> = {
   text: "var(--ds-color-text)",
   muted: "var(--ds-color-text-muted)",
   border: "var(--ds-color-border)",
+  onPrimary: "var(--ds-color-on-primary)",
+  onAccent: "var(--ds-color-on-accent)",
 };
 
 export function resolveThemeColor(value: string): string {

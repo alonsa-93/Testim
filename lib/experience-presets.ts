@@ -62,13 +62,19 @@ export function instantiatePresetScene(
   return { layers, tracks };
 }
 
-function titleLayer(text: string, y = "50%"): ExperienceLayer {
+/**
+ * color ניתן לדריסה (ברירת מחדל "text", הצבע הרגיל על רקע background/
+ * surface) כי preset "נועז" יושב על רקע primary מלא -- שם "text" רגיל
+ * לא בהכרח קריא, וצריך את onPrimary שמחושב במיוחד לניגודיות על primary
+ * (§19 DoD: "preset לא נכשל בניגודיות").
+ */
+function titleLayer(text: string, y = "50%", color = "text"): ExperienceLayer {
   return {
     id: "preset-title",
     type: "text",
     content: { text, tag: "h2" },
     layout: { mode: "stage", x: "50%", y, width: "min(88vw, 46rem)", anchor: "center", zIndex: "content" },
-    style: { color: "text" },
+    style: { color },
   };
 }
 
@@ -159,7 +165,7 @@ export const EXPERIENCE_PRESETS: ExperiencePreset[] = [
       durationVh: 200,
       transition: "fade",
       background: { color: "primary" },
-      layers: [titleLayer("תפסו את זה עכשיו", "50%")],
+      layers: [titleLayer("תפסו את זה עכשיו", "50%", "onPrimary")],
       tracks: [
         {
           id: "preset-track",

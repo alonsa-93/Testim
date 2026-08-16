@@ -80,6 +80,14 @@ describe("layerStyleToCss — semantic color resolution", () => {
     expect(layerStyleToCss({ color: "#ff0000" }).color).toBe("#ff0000");
   });
 
+  it("resolves onPrimary/onAccent -- needed for readable text on a primary/accent-colored background (§19 DoD: presets must not fail contrast)", () => {
+    // אלה מחושבים בסטודיו במיוחד לניגודיות תקינה (bestTextOn/ContrastPanel) --
+    // בלעדי המיפוי הזה, layer עם color:"onPrimary" על רקע primary היה מקבל
+    // מחרוזת CSS לא תקינה ("onPrimary" עצמו), לא את הצבע המחושב.
+    expect(layerStyleToCss({ color: "onPrimary" }).color).toBe("var(--ds-color-on-primary)");
+    expect(layerStyleToCss({ color: "onAccent" }).color).toBe("var(--ds-color-on-accent)");
+  });
+
   it("converts radius (number) into a px border-radius", () => {
     expect(layerStyleToCss({ radius: 12 }).borderRadius).toBe("12px");
   });

@@ -25,6 +25,13 @@ describe("EXPERIENCE_PRESETS", () => {
     }
   });
 
+  it('"bold" pairs its primary-colored background with onPrimary text, not plain "text" -- a real contrast bug, not just an unownership-conflict issue', () => {
+    const bold = EXPERIENCE_PRESETS.find((p) => p.id === "bold")!;
+    expect(bold.scene.background?.color).toBe("primary");
+    const title = bold.scene.layers?.find((l) => l.type === "text");
+    expect(title?.style?.color).toBe("onPrimary");
+  });
+
   it("every preset scene passes validateScene with zero ownership/incompatible-target issues", () => {
     for (const preset of EXPERIENCE_PRESETS) {
       const scene: ExperienceScene = {
