@@ -202,4 +202,42 @@ export class ExperienceRuntime {
   get activeSceneCount(): number {
     return this.scenes.size;
   }
+
+  /**
+   * גלילה בפועל למיקום שמייצר progress נתון ב-scene (Phase 7, Timeline
+   * scrubber בסטודיו). זו האינברסה המדויקת של measureScene: לא "preview
+   * מדומה" נפרד -- גלילה אמיתית של ה-ScrollRoot האמיתי, כדי שאותה
+   * צנרת scroll-listener->update() בדיוק שמניעה דף ציבורי תניע גם את
+   * התצוגה החיה בסטודיו (0 מסלול preview כפול לתחזק).
+   *
+   * הנוסחה: measureScene קורא top=rect.top-containerTop *בזמן גלילה
+   * נתונה*; אנחנו רוצים למצוא scrollPosition חדש כך שאחרי הגלילה, אותו
+   * top ייתן בדיוק את ה-progress המבוקש. מודדים top בפועל *עכשיו* ברגע
+   * הקריאה (measureRelativeToRoot), ואז: כל שינוי בגלילה ב-delta מזיז
+   * את top ב--delta בדיוק (element.top יורד כשגוללים למטה) -- כך
+   * שהיעד הוא scrollPosition הנוכחי + delta.
+   */
+  scrollToProgress(sceneId: string, progress: number) {
+    if (!this.scrollRoot) return;
+    const reg = this.scenes.get(sceneId);
+    if (!reg) return;
+    const clamped = Math.min(1, Math.max(0, progress));
+    const { top, height, viewportSize } = measureRelativeToRoot(reg.element, this.scrollRoot);
+    const total = height - viewportSize;
+    // אותה חלוקת מקרים בדיוק כמו measureScene, הפוכה: פותרים ל-top הרצוי
+    // (top שממנו measureScene יחשב בדיוק את clamped), ואז מתרגמים
+    // "כמה top צריך לזוז" ל"כמה scrollPosition צריך לזוז" (סימן הפוך --
+    // גלילה למטה מקטינה top).
+    const desiredTop =
+      total > 0 ? -clamped * total : viewportSize > 0 ? viewportSize * (1 - clamped) : 0;
+    const delta = top - desiredTop;
+    const current = this.scrollRoot.getScrollPosition();
+    const target = Math.max(0, current + delta);
+    const el = this.scrollRoot.getElement();
+    if (el instanceof Window) {
+      el.scrollTo({ top: target, behavior: "auto" });
+    } else {
+      el.scrollTop = target;
+    }
+  }
 }

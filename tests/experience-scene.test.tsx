@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render } from "@testing-library/react";
 import { ExperienceProvider } from "@/components/experience/experience-provider";
 import { ExperienceScene } from "@/components/experience/experience-scene";
-import type { ExperienceScene as ExperienceSceneConfig } from "@/lib/experience";
+import { emptyExperience, type ExperienceScene as ExperienceSceneConfig } from "@/lib/experience";
 
 /**
  * Phase 4 — Scene/Stage (docs/experience-audit.md §4.3, §11, §18).
@@ -189,5 +189,57 @@ describe("ExperienceScene — background + transition attributes", () => {
       </ExperienceProvider>
     );
     expect(container.querySelector('[data-scene-transition="fade"]')).toBeTruthy();
+  });
+});
+
+describe("ExperienceScene — Debug Mode (Phase 8)", () => {
+  afterEach(() => cleanup());
+
+  it("shows no debug badge or outline when settings.debug is off (default)", () => {
+    const config = { ...emptyExperience(), scenes: [scene()] };
+    const { container } = render(
+      <ExperienceProvider config={config}>
+        <ExperienceScene scene={scene()}>
+          <h1>x</h1>
+        </ExperienceScene>
+      </ExperienceProvider>
+    );
+    expect(container.querySelector("[data-experience-debug-badge]")).toBeNull();
+  });
+
+  it("shows a debug badge with the scene id when settings.debug is on", () => {
+    const config = { ...emptyExperience(), settings: { ...emptyExperience().settings, debug: true }, scenes: [scene()] };
+    const { container } = render(
+      <ExperienceProvider config={config}>
+        <ExperienceScene scene={scene()}>
+          <h1>x</h1>
+        </ExperienceScene>
+      </ExperienceProvider>
+    );
+    const badge = container.querySelector('[data-experience-debug-badge="s1"]');
+    expect(badge).toBeTruthy();
+    expect(badge?.textContent).toContain("s1");
+  });
+
+  it("applies the debug outline to both stage and flow composition", () => {
+    const config = { ...emptyExperience(), settings: { ...emptyExperience().settings, debug: true }, scenes: [] };
+    const { container: stageContainer } = render(
+      <ExperienceProvider config={config}>
+        <ExperienceScene scene={scene({ composition: "stage" })}>
+          <h1>x</h1>
+        </ExperienceScene>
+      </ExperienceProvider>
+    );
+    expect(stageContainer.querySelector('[data-experience-scene="s1"]')?.className).toContain("outline-lime-400");
+    cleanup();
+
+    const { container: flowContainer } = render(
+      <ExperienceProvider config={config}>
+        <ExperienceScene scene={scene({ composition: "flow", pinned: false })}>
+          <h1>x</h1>
+        </ExperienceScene>
+      </ExperienceProvider>
+    );
+    expect(flowContainer.querySelector('[data-experience-scene="s1"]')?.className).toContain("outline-lime-400");
   });
 });

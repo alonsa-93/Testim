@@ -24,9 +24,10 @@ import { emptyExperience } from "@/lib/experience";
 interface ExperienceContextValue {
   runtime: ExperienceRuntime | null;
   mode: ResponsiveMode;
+  debug: boolean;
 }
 
-const ExperienceContext = createContext<ExperienceContextValue>({ runtime: null, mode: "base" });
+const ExperienceContext = createContext<ExperienceContextValue>({ runtime: null, mode: "base", debug: false });
 
 export function useExperienceRuntime(): ExperienceRuntime | null {
   return useContext(ExperienceContext).runtime;
@@ -35,6 +36,11 @@ export function useExperienceRuntime(): ExperienceRuntime | null {
 /** מצב ה-viewport הפעיל (base/tablet/mobile) -- לצריכת ExperienceScene/Layer לצורך resolveResponsive */
 export function useExperienceMode(): ResponsiveMode {
   return useContext(ExperienceContext).mode;
+}
+
+/** settings.debug של ה-Experience (Phase 8) -- ExperienceScene קורא את זה כדי להציג badge עם id+progress חי */
+export function useExperienceDebug(): boolean {
+  return useContext(ExperienceContext).debug;
 }
 
 export function ExperienceProvider({
@@ -68,7 +74,7 @@ export function ExperienceProvider({
   }, [runtime, enabled, reducedMotion, mode]);
 
   return (
-    <ExperienceContext.Provider value={{ runtime, mode }}>
+    <ExperienceContext.Provider value={{ runtime, mode, debug: Boolean(config?.settings.debug) }}>
       {/*
         display:contents -- עוגן DOM טהור ל-findScrollRoot, לא משפיע על layout בכלל.
         data-experience-active (רק כש-enabled && !reducedMotion, בדיוק כמו תנאי

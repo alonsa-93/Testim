@@ -44,6 +44,9 @@ import {
   TextField,
 } from "@/components/studio/controls";
 import { ContrastPanel } from "@/components/studio/contrast-panel";
+import { ExperienceEditor } from "@/components/studio/experience-editor";
+import { ExperienceLivePreview } from "@/components/studio/experience-live-preview";
+import { emptyExperience } from "@/lib/experience";
 
 const THEME_DRAFT_KEY = "testim-studio-draft";
 const PAGE_DRAFT_KEY = "testim-studio-page";
@@ -94,6 +97,13 @@ export function StudioApp() {
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const [baseId, setBaseId] = useState(getDefaultTheme().id);
   const [viewport, setViewport] = useState<Viewport>("desktop");
+  // מצב עמוד: רגיל (Mode A, כברירת מחדל) לעומת חוויית גלילה (Mode B) --
+  // §1 במסמך התיקון הסופי: "page-type mode selector" בין Standard
+  // ל-Scroll-Experience. נגזר ישירות מ-page.experience?.enabled, לא
+  // state כפול -- כך שאין שני מקורות אמת לאותה עובדה.
+  const experienceMode = page.experience?.enabled === true;
+  const [selectedSceneId, setSelectedSceneId] = useState<string | null>(null);
+  const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
   const [notice, setNotice] = useState<
     { kind: "ok" | "error"; text: string; onUndo?: () => void } | null
   >(null);
@@ -195,6 +205,8 @@ export function StudioApp() {
       return;
     setPage(structuredClone(source));
     setSelectedBlockId(null);
+    setSelectedSceneId(null);
+    setSelectedLayerId(null);
     const pageTheme = themes.find((t) => t.id === source.themeId);
     if (pageTheme) {
       setBaseId(pageTheme.id);
@@ -206,6 +218,20 @@ export function StudioApp() {
     if (!window.confirm("להתחיל דף חדש וריק? השינויים הנוכחיים יאבדו.")) return;
     setPage(emptyPage());
     setSelectedBlockId(null);
+    setSelectedSceneId(null);
+    setSelectedLayerId(null);
+  }
+
+  /** מתג מצב העמוד (§1 במסמך התיקון הסופי): לא מוחק נתוני Experience
+   * כשעוברים חזרה ל"עמוד רגיל" — רק enabled=false, בדיוק כמו שה-no-
+   * data-loss design של normalizeExperience מבטיח (lib/experience-normalize.ts).
+   * המשתמש יכול לחזור לחוויית הגלילה בדיוק כמו שהשאיר אותה. */
+  function setExperienceEnabled(enabled: boolean) {
+    setPage((p) => ({ ...p, experience: { ...(p.experience ?? emptyExperience()), enabled } }));
+    if (enabled) {
+      setSelectedSceneId(null);
+      setSelectedLayerId(null);
+    }
   }
 
   function fixOnColor(key: "onPrimary" | "onAccent") {
@@ -272,6 +298,8 @@ export function StudioApp() {
         // נרמול משלים מזהי בלוקים חסרים/כפולים — בלעדיו עריכה זולגת בין בלוקים
         setPage(normalizePage(parsed));
         setSelectedBlockId(null);
+        setSelectedSceneId(null);
+        setSelectedLayerId(null);
         flash("ok", `הדף "${parsed.name}" נטען`);
         return;
       }
@@ -460,6 +488,57 @@ export function StudioApp() {
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
         {/* פאנל העריכה */}
         <aside className="flex max-h-[48dvh] w-full shrink-0 flex-col border-b border-slate-200 bg-white lg:max-h-none lg:w-[380px] lg:border-b-0 lg:border-e">
+          {/* בורר מצב עמוד (§1 במסמך התיקון הסופי): Standard (Mode A) לעומת
+              Scroll Experience (Mode B) — שני "אפליקציות" נפרדות לגמרי בפאנל
+              העריכה, לא עוד טאב בתוך אותה רשימה. תמיד מוצג (לא רק כש-
+              page.experience כבר קיים!): זו הדרך היחידה להגיע בכלל למסך
+              "הפעלת חוויית גלילה" (empty state בתוך ExperienceEditor) --
+              דף טרי בלי experience חייב נקודת כניסה, אחרת אין שום דרך
+              להפעיל Experience מהסטודיו בפעם הראשונה (נתפס לפני שהגיע
+              לאימות בדפדפן אמיתי). */}
+          <div className="flex shrink-0 gap-1 border-b border-slate-200 bg-slate-50 p-2">
+              <button
+                type="button"
+                onClick={() => setExperienceEnabled(false)}
+                aria-pressed={!experienceMode}
+                className={`flex-1 cursor-pointer rounded-md px-3 py-2 text-sm font-bold ${
+                  !experienceMode ? "bg-slate-900 text-white" : "text-slate-500 hover:bg-slate-100"
+                }`}
+              >
+                עמוד רגיל
+              </button>
+              <button
+                type="button"
+                onClick={() => setExperienceEnabled(true)}
+                aria-pressed={experienceMode}
+                className={`flex-1 cursor-pointer rounded-md px-3 py-2 text-sm font-bold ${
+                  experienceMode
+                    ? "bg-gradient-to-r from-indigo-600 to-fuchsia-600 text-white"
+                    : "text-slate-500 hover:bg-slate-100"
+                }`}
+              >
+                חוויית גלילה
+              </button>
+          </div>
+
+          {experienceMode ? (
+            <div className="min-h-0 flex-1 overflow-y-auto p-5">
+              <ExperienceEditor
+                config={page.experience}
+                onChange={(next) =>
+                  setPage((p) => ({
+                    ...p,
+                    experience: typeof next === "function" ? next(p.experience ?? emptyExperience()) : next,
+                  }))
+                }
+                selectedSceneId={selectedSceneId}
+                onSelectScene={setSelectedSceneId}
+                selectedLayerId={selectedLayerId}
+                onSelectLayer={setSelectedLayerId}
+              />
+            </div>
+          ) : (
+            <>
           <div className="flex shrink-0 gap-1 border-b border-slate-200 p-2">
             {(
               [
@@ -950,6 +1029,8 @@ export function StudioApp() {
               </>
             )}
           </div>
+            </>
+          )}
         </aside>
 
         {/* תצוגה חיה */}
@@ -984,7 +1065,21 @@ export function StudioApp() {
                 className="[transform:translateZ(0)]"
                 motionOff={typing}
               >
-                {page.blocks.length > 0 ? (
+                {experienceMode ? (
+                  page.experience && page.experience.scenes.length > 0 ? (
+                    <ExperienceLivePreview
+                      page={page}
+                      theme={theme}
+                      selectedSceneId={selectedSceneId}
+                      onSelectScene={setSelectedSceneId}
+                      mode={viewport === "desktop" ? "base" : viewport}
+                    />
+                  ) : (
+                    <p className="p-20 text-center text-muted">
+                      אין עדיין סצנות בחוויית הגלילה. הוסיפו את הראשונה מהפאנל.
+                    </p>
+                  )
+                ) : page.blocks.length > 0 ? (
                   <PageRenderer page={page} theme={theme} />
                 ) : (
                   <p className="p-20 text-center text-muted">

@@ -219,3 +219,91 @@ describe("ExperienceRuntime — end to end wiring", () => {
     runtime.detach();
   });
 });
+
+describe("ExperienceRuntime — scrollToProgress (Phase 7 Timeline scrubber)", () => {
+  function config(overrides: Partial<ExperienceConfig> = {}): ExperienceConfig {
+    return {
+      ...emptyExperience(),
+      scenes: [
+        { id: "s1", name: "Scene", composition: "stage", pinned: true, durationVh: 200, layers: [], tracks: [] },
+      ],
+      ...overrides,
+    };
+  }
+
+  afterEach(() => {
+    document.body.innerHTML = "";
+  });
+
+  it("scrolling to a requested progress round-trips through measureScene (total > 0 branch)", async () => {
+    const container = document.createElement("main");
+    let scrollTop = 0;
+    Object.defineProperty(container, "scrollTop", {
+      get: () => scrollTop,
+      set: (v: number) => {
+        scrollTop = v;
+      },
+    });
+    Object.defineProperty(container, "clientHeight", { value: 800, configurable: true });
+    vi.spyOn(container, "getBoundingClientRect").mockImplementation(() => ({ top: 0 }) as DOMRect);
+    document.body.appendChild(container);
+
+    // height 1600, viewport 800 -> total=800. rect.top tracks (containerTop=0) minus scrollTop.
+    const sceneEl = document.createElement("section");
+    vi.spyOn(sceneEl, "getBoundingClientRect").mockImplementation(
+      () => ({ top: 800 - scrollTop, height: 1600 }) as DOMRect
+    );
+    container.appendChild(sceneEl);
+
+    const runtime = new ExperienceRuntime(config({ enabled: true }));
+    runtime.registerScene("s1", sceneEl);
+    const scrollRoot = new ElementScrollRoot(container);
+    runtime.attach(scrollRoot);
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    runtime.scrollToProgress("s1", 0.5);
+    runtime.forceUpdate();
+    const measurement = runtime.getSceneMeasurement("s1");
+    expect(measurement?.progress).toBeCloseTo(0.5, 5);
+    runtime.detach();
+  });
+
+  it("clamps requested progress to [0,1] before computing the scroll target", async () => {
+    const container = document.createElement("main");
+    let scrollTop = 0;
+    Object.defineProperty(container, "scrollTop", {
+      get: () => scrollTop,
+      set: (v: number) => {
+        scrollTop = Math.max(0, v);
+      },
+    });
+    Object.defineProperty(container, "clientHeight", { value: 800, configurable: true });
+    vi.spyOn(container, "getBoundingClientRect").mockImplementation(() => ({ top: 0 }) as DOMRect);
+    document.body.appendChild(container);
+
+    const sceneEl = document.createElement("section");
+    vi.spyOn(sceneEl, "getBoundingClientRect").mockImplementation(
+      () => ({ top: 800 - scrollTop, height: 1600 }) as DOMRect
+    );
+    container.appendChild(sceneEl);
+
+    const runtime = new ExperienceRuntime(config({ enabled: true }));
+    runtime.registerScene("s1", sceneEl);
+    const scrollRoot = new ElementScrollRoot(container);
+    runtime.attach(scrollRoot);
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    runtime.scrollToProgress("s1", 5); // way out of range
+    runtime.forceUpdate();
+    expect(runtime.getSceneMeasurement("s1")?.progress).toBeCloseTo(1, 5);
+    runtime.detach();
+  });
+
+  it("is a safe no-op for an unregistered scene id or before attach()", () => {
+    const runtime = new ExperienceRuntime(config({ enabled: true }));
+    expect(() => runtime.scrollToProgress("missing", 0.5)).not.toThrow();
+    runtime.attach(new WindowScrollRoot());
+    expect(() => runtime.scrollToProgress("missing", 0.5)).not.toThrow();
+    runtime.detach();
+  });
+});
