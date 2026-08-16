@@ -65,11 +65,28 @@ describe("measureScene", () => {
     expect(m.rawProgress).toBeGreaterThan(1);
   });
 
-  it("a scene shorter than the viewport resolves progress via the top<=0 fallback, not a negative/NaN total", () => {
-    const el = makeScene(-10, 400, 800); // height(400) < viewport(800) -> total <= 0
+  it("a scene shorter than the viewport resolves progress via viewport-entry, not a negative/NaN total", () => {
+    const el = makeScene(-10, 400, 800); // height(400) < viewport(800) -> total <= 0, top already ~at viewport-top
     const m = measureScene(el, new WindowScrollRoot());
     expect(Number.isNaN(m.progress)).toBe(false);
-    expect(m.progress).toBe(1); // top<=0 branch
+    expect(m.progress).toBe(1);
+  });
+
+  it("a short flow scene at the very end of the page (top never reaches 0) still progresses smoothly, not stuck at 0", () => {
+    // אומת אמפירית ב-Playwright (Phase 9): scene אחרון בדף, קצר מה-viewport,
+    // בלי עוד גובה גלילה מתחתיו -- top נשאר חיובי (195) גם בגלילה מקסימלית,
+    // כי אין "לאן" לגלול הלאה. עם הבינארי הישן (top<=0?1:0) זה היה נשאר
+    // תקוע ב-progress=0 לנצח, למרות שהאלמנט כבר ברובו בתוך ה-viewport.
+    const el = makeScene(195, 487, 900); // height(487) < viewport(900), top still positive
+    const m = measureScene(el, new WindowScrollRoot());
+    expect(m.progress).toBeCloseTo((900 - 195) / 900, 5); // ~0.783 -- well past the entrance track's last keyframe (0.3)
+    expect(m.progress).toBeGreaterThan(0.3);
+  });
+
+  it("a short flow scene not yet visible (top === viewportSize) has progress 0", () => {
+    const el = makeScene(900, 300, 900); // just below the fold, hasn't entered yet
+    const m = measureScene(el, new WindowScrollRoot());
+    expect(m.progress).toBe(0);
   });
 });
 

@@ -59,7 +59,16 @@ export function measureScene(
 ): SceneMeasurement {
   const { top, height, viewportSize } = measureRelativeToRoot(el, scrollRoot);
   const total = height - viewportSize;
-  const rawProgress = total > 0 ? -top / total : top <= 0 ? 1 : 0;
+  // תוכן קצר מהחלון (flow scene עם content יחיד כמו כרטיס CTA, §11): אין
+  // "מסלול גלילה" משמעותי לרוץ עליו (total<=0), אז progress נגזר מכניסת
+  // האלמנט מלמטה לחלון -- 0 כשה-top עדיין בתחתית ה-viewport, 1 כשהוא
+  // הגיע לראשו -- באותה סמנטיקה בדיוק של "top מגיע לראש viewport=1" של
+  // המקרה הרגיל, רק שכאן היא הדרגתית ולא קפיצה בינארית. קריטי לסצנה
+  // שהיא האחרונה בדף: אין עוד גובה גלילה מתחתיה כדי ש-top יגיע ל-0
+  // בפועל (אומת אמפירית: --exp-opacity נשאר תקוע על 0 גם בתחתית הדף
+  // המוחלטת), אז חייבים progress הדרגתי שמגיע ל-1 גם בלי "לעבור" את
+  // ה-viewport top ממש.
+  const rawProgress = total > 0 ? -top / total : viewportSize > 0 ? (viewportSize - top) / viewportSize : top <= 0 ? 1 : 0;
   const progress = normalizeProgress(rawProgress);
   // MVP: 3 מצבים בפועל בלבד (before/active/after) -- ראו §11 באודיט
   const state: SceneLifecycleState = rawProgress < 0 ? "before" : rawProgress > 1 ? "after" : "active";

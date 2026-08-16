@@ -201,6 +201,20 @@ const ANCHOR_ORIGIN: Record<LayerAnchor, string> = {
   end: "100% 50%",
 };
 
+/**
+ * מירכוז/יישור טקסט לפי אותה נקודת עוגן (anchor) שכבר קובעת
+ * transform-origin — לא רק את מיקום הקופסה אלא גם את הטקסט בתוכה
+ * (אומת אמפירית ב-Playwright, Phase 9: layer עם anchor:"center"+width
+ * ממורכז נכון כקופסה, אבל הטקסט בפנים נשאר צמוד לימין כי RTL מיישר
+ * טקסט לפי dir כברירת מחדל — בלי זה, "hero-title" ממורכז נראה עקום).
+ * "start"/"end" לוגיים, לא "left"/"right" — נכון גם ב-RTL.
+ */
+const ANCHOR_TEXT_ALIGN: Record<LayerAnchor, string> = {
+  start: "start",
+  center: "center",
+  end: "end",
+};
+
 const SHADOW_CLASS: Record<NonNullable<LayerStyle["shadow"]>, string> = {
   none: "shadow-none",
   soft: "shadow-card",
@@ -213,18 +227,35 @@ const SHADOW_CLASS: Record<NonNullable<LayerStyle["shadow"]>, string> = {
  * תמיד, ראו experience-scene.tsx). insetInlineStart/insetBlockStart —
  * לוגי, לא left/top גולמי — כדי לעבוד נכון גם ב-RTL. flow mode לא
  * נוגע ב-position בכלל, רק ברוחב.
+ *
+ * anchor:"center" עם width מוגדר ממורכז דרך inset מלא (0/0) + margin-
+ * inline:auto — **לא** דרך transform:translateX(-50%). הסיבה: translate
+ * הוא בדיוק המאפיין שה-runtime כותב אליו כל פריים לפי הטראקים
+ * (--exp-x/--exp-y, §8). מירכוז סטטי דרך translate היה מתנגש/נדרס
+ * על ידי כל אנימציה שמזיזה את השכבה. margin:auto הוא ערוץ עצמאי
+ * לגמרי — אין שום התנגשות בעלות.
  */
 export function layerLayoutStyle(layout: LayerLayout): Record<string, string | number> {
   const style: Record<string, string | number> = {};
   if (layout.mode === "stage") {
     style.position = "absolute";
-    if (layout.x !== undefined) style.insetInlineStart = layout.x;
+    if (layout.anchor === "center" && layout.width) {
+      style.insetInlineStart = 0;
+      style.insetInlineEnd = 0;
+      style.marginInlineStart = "auto";
+      style.marginInlineEnd = "auto";
+    } else if (layout.x !== undefined) {
+      style.insetInlineStart = layout.x;
+    }
     if (layout.y !== undefined) style.insetBlockStart = layout.y;
     if (layout.zIndex) style.zIndex = Z_LAYER_ORDER[layout.zIndex];
   }
   if (layout.width) style.width = layout.width;
   if (layout.maxWidth) style.maxWidth = layout.maxWidth;
-  if (layout.anchor) style.transformOrigin = ANCHOR_ORIGIN[layout.anchor];
+  if (layout.anchor) {
+    style.transformOrigin = ANCHOR_ORIGIN[layout.anchor];
+    style.textAlign = ANCHOR_TEXT_ALIGN[layout.anchor];
+  }
   return style;
 }
 

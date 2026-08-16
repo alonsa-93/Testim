@@ -27,6 +27,31 @@ describe("layerLayoutStyle — stage mode", () => {
     expect(layerLayoutStyle({ mode: "stage", anchor: "start" }).transformOrigin).toBe("0% 50%");
     expect(layerLayoutStyle({ mode: "stage", anchor: "end" }).transformOrigin).toBe("100% 50%");
   });
+
+  it("maps anchor to logical textAlign too, not just transformOrigin (RTL-safe: start/center/end, never left/right)", () => {
+    // אומת אמפירית ב-Playwright, Phase 9: בלי זה, קופסה ממורכזת ב-RTL
+    // עדיין מיישרת את הטקסט שבתוכה לימין (ברירת המחדל של dir), ונראית
+    // "לא ממורכזת" למרות שהקופסה עצמה כן ממורכזת נכון.
+    expect(layerLayoutStyle({ mode: "stage", anchor: "start" }).textAlign).toBe("start");
+    expect(layerLayoutStyle({ mode: "stage", anchor: "center" }).textAlign).toBe("center");
+    expect(layerLayoutStyle({ mode: "stage", anchor: "end" }).textAlign).toBe("end");
+  });
+
+  it("centers via margin:auto + full inset, not transform, when anchor=center and width is set", () => {
+    const style = layerLayoutStyle({ mode: "stage", anchor: "center", width: "20rem", x: "80%" });
+    // x is deliberately ignored in this branch -- centering wins
+    expect(style.insetInlineStart).toBe(0);
+    expect(style.insetInlineEnd).toBe(0);
+    expect(style.marginInlineStart).toBe("auto");
+    expect(style.marginInlineEnd).toBe("auto");
+    expect(style.translate).toBeUndefined(); // must never collide with the runtime's --exp-x/--exp-y
+  });
+
+  it("falls back to x-based positioning when anchor=center but no width is given", () => {
+    const style = layerLayoutStyle({ mode: "stage", anchor: "center", x: "30%" });
+    expect(style.insetInlineStart).toBe("30%");
+    expect(style.marginInlineStart).toBeUndefined();
+  });
 });
 
 describe("layerLayoutStyle — flow mode", () => {
