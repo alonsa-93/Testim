@@ -23,12 +23,18 @@ import { emptyExperience } from "@/lib/experience";
  */
 interface ExperienceContextValue {
   runtime: ExperienceRuntime | null;
+  mode: ResponsiveMode;
 }
 
-const ExperienceContext = createContext<ExperienceContextValue>({ runtime: null });
+const ExperienceContext = createContext<ExperienceContextValue>({ runtime: null, mode: "base" });
 
 export function useExperienceRuntime(): ExperienceRuntime | null {
   return useContext(ExperienceContext).runtime;
+}
+
+/** מצב ה-viewport הפעיל (base/tablet/mobile) -- לצריכת ExperienceScene/Layer לצורך resolveResponsive */
+export function useExperienceMode(): ResponsiveMode {
+  return useContext(ExperienceContext).mode;
 }
 
 export function ExperienceProvider({
@@ -62,7 +68,7 @@ export function ExperienceProvider({
   }, [runtime, enabled, reducedMotion, mode]);
 
   return (
-    <ExperienceContext.Provider value={{ runtime }}>
+    <ExperienceContext.Provider value={{ runtime, mode }}>
       {/* display:contents -- עוגן DOM טהור ל-findScrollRoot, לא משפיע על layout בכלל */}
       <div ref={rootRef} style={{ display: "contents" }}>
         {children}

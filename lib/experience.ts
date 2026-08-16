@@ -105,6 +105,23 @@ export const PROPERTY_METADATA: Record<AnimatableProp, PropertyMetadata> = {
   blur: { type: "length", unit: "px", interpolation: "linear", range: [0, null], default: 0, performanceClass: "expensive" },
 };
 
+/** ממיר טוקן סמנטי (primary/accent/...) ל-CSS var של הערכה הפעילה;
+ * כל דבר אחר (hex/rgb/...) עובר כמו שהוא -- Experience לא מגדיר
+ * מערכת טוקנים שנייה, אלא קורא מ-Theme הקיים (§65/§70 במסמך התיקון) */
+const SEMANTIC_COLOR_VARS: Record<string, string> = {
+  primary: "var(--ds-color-primary)",
+  accent: "var(--ds-color-accent)",
+  background: "var(--ds-color-bg)",
+  surface: "var(--ds-color-surface)",
+  text: "var(--ds-color-text)",
+  muted: "var(--ds-color-text-muted)",
+  border: "var(--ds-color-border)",
+};
+
+export function resolveThemeColor(value: string): string {
+  return SEMANTIC_COLOR_VARS[value] ?? value;
+}
+
 export const PROPERTY_LABELS: Record<AnimatableProp, string> = {
   opacity: "שקיפות",
   x: "מיקום אופקי",

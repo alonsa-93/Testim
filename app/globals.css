@@ -549,6 +549,22 @@
 }
 
 /**
+ * Scene transitions (Phase 4, docs/experience-audit.md §4.1/§18 Phase 4).
+ * ה-runtime כותב --exp-scene-progress על ה-<section data-experience-scene>
+ * בכל פריים; ה-CSS כאן קורא אותו ישירות -- אין כתיבת JS נוספת בשביל
+ * transition="fade". min() בונה עקומת fade-in/fade-out סימטרית: עולה
+ * ב-10% הראשונים, נשארת מלאה באמצע, יורדת ב-10% האחרונים.
+ * "cut"/שאר הערכים = ללא אפקט (ברירת מחדל --exp-opacity הרגילה של הבמה).
+ */
+[data-scene-transition="fade"] > .exp-stage {
+  opacity: min(
+    calc(var(--exp-scene-progress, 1) * 10),
+    calc((1 - var(--exp-scene-progress, 1)) * 10),
+    1
+  );
+}
+
+/**
  * שלב ב' — אינטגרציית הבלוקים: תוספות CSS קטנות לבלוקים ולאפקטים
  * שנחווטו בפועל (drawn-line בשלבי תהליך, פס נגלל עם השהיה, ברק
  * חולף בכפתורים, ובלוק ה"הצהרה" הנגללת). לא נוגעות בכללי שלב א'.

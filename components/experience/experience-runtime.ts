@@ -166,6 +166,10 @@ export class ExperienceRuntime {
     for (const { scene, element } of this.scenes.values()) {
       const measurement = measureScene(element, this.scrollRoot);
       this.lastMeasurements.set(scene.id, measurement);
+      // --exp-scene-progress על ה-scene wrapper עצמו -- לא רק לצריכה
+      // פנימית: זה הבסיס שמעברי scene (Phase 4, transition="fade")
+      // וה-Debug Mode (Phase 8) קוראים ישירות מ-CSS/DOM, בלי עוד כתיבת JS.
+      element.style.setProperty("--exp-scene-progress", String(measurement.progress));
       this.applyScene(scene, measurement.progress);
     }
   }
