@@ -75,6 +75,11 @@ prop-drilling**, ואפשר להרחיב אותו לאותה מטרה עבור E
 | `.fx-beam-dot` | CSS infinite | `offset-distance` | נקודת האור |
 | `.fx-halo` / `.fx-beam` fallback | CSS + `@property` | `--fx-angle` | פסאודו-אלמנט |
 | `.text-shimmer` | CSS infinite | `background-position` | טקסט |
+| `Button` | Tailwind | **`transition: all 200ms`** — כלומר *כל* מאפיין | כל CTA במערכת |
+| `whatsapp` | Tailwind | `scale` + transition על ארבעת מאפייני ה-transform | הכפתור הצף |
+| `faq` chevron | Tailwind | `rotate` (מונע מ-`details[open]`) | ה-svg |
+| `marquee` slant | Tailwind | `rotate` | עוטף ה-track |
+| `[data-fx-card="tilt"] .ds-card` | CSS | `transform-style: preserve-3d` | **כל** כרטיס בערכת tilt |
 
 **תובנה מרכזית:** ה-CSS הקיים כבר משתמש במאפיינים העצמאיים
 `translate` / `scale` (ולא ב-`transform` מרוכב) עבור `Reveal` — במכוון,
@@ -160,11 +165,20 @@ scene, target, timeline או keyframes.
 את התוכן ב-15% אטימות. בנוסף אותר אב עם `transform`:
 `ds-scope [transform:translateZ(0)]`.
 
+**ובנוסף — שבירה שנייה, בלתי תלויה:** ב-`studio-app.tsx:961` יש
+`<div className="overflow-hidden rounded-xl ...">` (מסגרת הדפדפן המדומה)
+בין ה-scrollport לבין התצוגה. `overflow: hidden` הופך אותו לתיבת הגלילה
+הקרובה ביותר — והיא לעולם לא נגללת. לכן **`position: sticky` פשוט לא
+נאחז בתוך הסטודיו**: גם ה-navbar (`sticky top-0`) וגם ה-Statement
+מרונדרים שם כתוכן זורם רגיל.
+
 מסקנות מחייבות:
 1. הפשטת scroll root אינה אופציונלית. ה-runtime חייב לקבל
    `scrollRoot: HTMLElement | Window` ולפתור אותו בזמן ריצה.
-2. כל פיצ'ר גלילה שייבנה בדפוס של Statement יהיה שבור בסטודיו.
-3. יש כאן גם באג קיים לתיקון — לא רק אילוץ תכנוני.
+2. **גם ה-pinning עצמו לא יעבוד בסטודיו** בלי טיפול במסגרת החוצצת —
+   זה לא רק חישוב progress שגוי אלא sticky שלא נאחז כלל.
+3. כל פיצ'ר גלילה שייבנה בדפוס של Statement יהיה שבור בסטודיו.
+4. יש כאן שני באגים קיימים לתיקון — לא רק אילוץ תכנוני.
 
 ### 3.2 שאר הסיכונים
 
@@ -180,6 +194,9 @@ scene, target, timeline או keyframes.
 | R9 | Scroll-jacking | גבוה | המחקר הקודם בריפו (`repos-report`) סימן במפורש חטיפת גלילה כ-anti-pattern. **פתרון: pinning מבוסס `sticky` בלבד — אפס יירוט `wheel`/`touchmove`.** הגלילה נשארת של המשתמש |
 | R10 | RTL — כיווניות אופקית | בינוני | API סמנטי `start`/`end` בלבד; המרה ל-X בזמן ריצה |
 | R11 | הצפת תנועה / ירידה בביצועים במובייל | בינוני | Motion budget + damper גלובלי + ברירת מחדל שקטה |
+| R12 | **אנימציית CSS גוברת על inline style** — כתיבת `translate` מה-runtime ל-`.fx-marquee-track` או ל-`.fx-aurora i` תיבלע **בשקט** | גבוה | רשימת "אלמנטים אסורים" ב-runtime + אזהרה ב-Studio; אלה שני האלמנטים היחידים עם `animation` אינסופי על מאפיין transform |
+| R13 | `transition: all 200ms` על **כל** `Button` — כל scrub על כפתור יהיה מרוכך ב-200ms | בינוני | ה-wrapper `.exp-motion` הוא אלמנט נפרד מהכפתור, ולכן לא יורש את ה-transition |
+| R14 | ה-remount של `key={replayKey}` בסטודיו מוחק refs/observers | בינוני | ה-runtime חייב לשרוד remount מלא — רישום מחדש ב-mount, לא state גלובלי |
 
 ---
 
@@ -532,5 +549,78 @@ reduced-motion, desktop/mobile.
    בפרויקט. הוספת `vitest` היא dependency חדשה. מאשר?
 2. **היקף MVP** — האם Phase 6 (freeform layers) בפנים ב-MVP, או שמתחילים
    בכוריאוגרפיה על בלוקים קיימים בלבד?
-3. **תיקון באג ה-Statement בסטודיו** — לתקן כחלק מ-Phase 2 (מומלץ, כי
-   ה-runtime החדש פותר אותו ממילא), או כתיקון נפרד ומוקדם?
+3. **תיקון באגי הסטודיו** — לתקן כחלק מ-Phase 2 (מומלץ, כי ה-runtime
+   החדש פותר אותם ממילא), או כתיקון נפרד ומוקדם?
+
+---
+
+## נספח א' — וו-תלייה שכבר קיימים ואפשר לאמץ בחינם
+
+סקר מעמיק של הבלוקים העלה מספר הכנות שכבר קיימות בקוד ואף אחד לא צורך
+אותן. אימוץ שלהן חוסך migration:
+
+| הוק | מיקום | מצב היום | שימוש מוצע |
+|---|---|---|---|
+| `[data-scrub]` | `globals.css:523`, בתוך סלקטור כיבוי התנועה של הסטודיו | **אין לו שום מפיק בריפו** | בדיוק השם שה-runtime צריך. מקבלים כיבוי-תנועה בסטודיו בחינם |
+| `[data-fx-motion]` | `globals.css:519` | שמור עם הערה, לא בשימוש | מתג עוצמת תנועה ברמת scope |
+| `--i` | נכתב ב-`hero.tsx:138`, `about.tsx:87`, `logos.tsx:48` | **נכתב ואף כלל CSS לא קורא אותו שם** | אינדקס מוכן לכל פריט ברשימה, בלי שינוי DOM |
+| `Card` spreads `...props` | `ui/card.tsx:6,17` | כבר מעביר `data-*` | אפשר לתייג כרטיסים בלי לגעת ברכיב |
+
+לעומת זאת **לא** מעבירים props היום ולכן ידרשו שינוי קטן אם נרצה לתייג
+אותם ישירות: `Badge`, `Reveal`, `Button`, `Section`/`Container`,
+`SectionHeading`.
+
+**CSS מת שכדאי לנקות או לאמץ:** `.fx-lift`, `.text-shimmer` ו-`.fx-spot`
+מוגדרים ב-`globals.css` אך **אין להם שום carrier בקוד**.
+
+## נספח ב' — מפת התנגשויות מדויקת (תמצית)
+
+| # | בעלים | מאפיינים | חומרת התנגשות |
+|---|---|---|---|
+| C1 | `[data-animate]` (Reveal) | `opacity`, `translate`, `scale`, `filter` + transition על כולם | **מלאה** — גם בעלות וגם ריכוך של 500–800ms שיהפוך scrub ל"גומייה" |
+| C2 | `.split-word` | `opacity`, `translate`, `filter` + delay לפי `--i` | ישירה. `scale`/`rotate` פנויים |
+| C3 | `.fx-statement-word` | `opacity` בלבד | חלקית. השאר פנוי |
+| C4 | `.fx-tilt` | `transform` (shorthand) | כתיבת shorthand תמחק את הטילט; מאפיינים עצמאיים **מתחברים** בבטחה |
+| C5/C6 | `.fx-btn-3d` / `.fx-btn-shine` | `translate` / `overflow:hidden` | על הכפתור עצמו בלבד |
+| C7 | `.fx-steps-line` | `scale`, מונע ממצב של **אלמנט אחר** | ההצמדה הצולבת היחידה בקוד |
+| C8 | `.fx-marquee-track` | `translate` דרך `animation` | **בליעה שקטה** — ראו R12 |
+| C10 | `.fx-aurora i` | `translate`, `scale` דרך `animation` | כנ"ל; ועוגן לגובה הדף, לא לחלון |
+
+**מאפיינים פנויים כמעט בכל מקום:** `rotate` (למעט slant המרקיז ו-chevron
+ה-FAQ), `transform` shorthand (למעט `.fx-tilt`), ו-`filter` (למעט
+וריאנט ה-blur של Reveal ו-`.split-word`).
+
+**מרחב שמות תפוס:** `--anim-*`, `--i`, `--n`, `--progress`, `--rx`,
+`--ry`, `--mx`, `--my`, `--fx-angle`, `--edge`, וכל `--ds-*`.
+מכאן הבחירה בקידומת **`--exp-*`** — אין התנגשות.
+
+## נספח ג' — בלוקים שחוסמים pinning בתוכם
+
+`overflow: hidden` יוצר תיבת גלילה, ולכן `sticky` בתוכו לא נאחז לעולם:
+
+| בלוק | שורה | הערה |
+|---|---|---|
+| **hero** | `hero.tsx:86` | על **כל** ההירו. scene נעוץ בתוך הירו בלתי אפשרי בלי שינוי השורה הזו |
+| **cta** | `cta.tsx:40` | על ה-Reveal עצמו, שהוא גם הבאנר |
+| marquee | `:61`, `:66` | מכוון |
+| gallery / video | `:57` / `:56` | ממוקד למסגרת המדיה, לא בעייתי |
+
+**שרשרת האבות בדפים הציבוריים נקייה:** `body` → `.ds-scope` → `<main>` →
+בלוק. אין `overflow`, `transform`, `filter`, `contain` או `perspective`
+באף אחד מהם — ולכן sticky עובד היום בדפים אמיתיים (מוכח על ידי ה-navbar
+וה-Statement כאחד).
+
+## נספח ד' — חובות טכניים קיימים שהתגלו בדרך
+
+לא חוסמים, אך כדאי לטפל בהם במסגרת השלבים הרלוונטיים:
+
+1. `count-up.tsx` — לולאת ה-rAF **לא מבוטלת ב-unmount**; רק ה-observer
+   מנותק. tween באוויר ימשיך לקרוא ל-`setDisplay`.
+2. שתי קונבנציות IO שונות בקוד: `threshold 0.6 / rootMargin +15%`
+   (CountUp) מול `0.15 / -12%` (Reveal). כדאי לאחד.
+3. אי-התאמת יחידות גובה סביב ה-pin היחיד הקיים: `min-h-screen` (`100vh`)
+   ב-scope, `min-h-[240vh]` בעוטף, `min-h-svh` ב-sticky, ו-
+   `window.innerHeight` בחישוב — ארבע הגדרות שונות ל"גובה מסך" בסצנה אחת.
+   במובייל עם שורת כתובת מתקפלת הן לא מסכימות ביניהן.
+4. `CountUp` עושה `setState` בכל פריים (re-render per frame) בעוד
+   ה-Statement עושה אפס. ה-runtime החדש חייב לאמץ את הדפוס של Statement.
