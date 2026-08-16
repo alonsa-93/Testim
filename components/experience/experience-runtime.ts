@@ -183,12 +183,24 @@ export class ExperienceRuntime {
     }
   }
 
+  /**
+   * settings.performance="lite" (Phase 11, §19 DoD: "מובייל מבוקר במכוון,
+   * לא רק scaled-down") מדלג על כתיבת מאפיינים "יקרים"
+   * (PROPERTY_METADATA.performanceClass="expensive", בפועל: blur, שדורש
+   * repaint ולא רק compositing) -- לא מוחק את ה-track, רק לא כותב את
+   * ה-CSS var שלו, כך שהוא נשאר בברירת המחדל הנייטרלית שלו (blur:0px,
+   * §8 CSS). נבדק אמפירית שבלעדי זה "lite" היה preference שמור בלי שום
+   * השפעה בפועל -- ה-gap הזה נמצא בביקורת העצמית (docs/experience-final-audit.md)
+   * ותוקן, לא רק תועד.
+   */
   private applyScene(scene: ExperienceScene, progress: number) {
+    const lite = this.config.settings.performance === "lite";
     for (const track of scene.tracks) {
       const target = this.targets.resolve(track.target);
       if (!target) continue; // target חסר -- מדלגים, לא קורסים (§7.3)
       const values = evaluateTrack(track, progress, this.config.settings.defaultEasing, this.mode);
       for (const [prop, value] of Object.entries(values) as [AnimatableProp, number][]) {
+        if (lite && PROPERTY_METADATA[prop].performanceClass === "expensive") continue;
         target.style.setProperty(PROP_CSS_VAR[prop], formatPropValue(prop, value));
       }
     }

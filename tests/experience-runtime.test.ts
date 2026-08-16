@@ -153,6 +153,86 @@ describe("ExperienceRuntime — end to end wiring", () => {
     runtime.detach();
   });
 
+  it('settings.performance="lite" skips writing expensive properties (blur) but still writes cheap ones (opacity) -- §19 DoD "מובייל מבוקר במכוון, לא רק scaled-down"', async () => {
+    const runtime = new ExperienceRuntime(
+      config({
+        enabled: true,
+        settings: { ...emptyExperience().settings, performance: "lite" },
+        scenes: [
+          {
+            id: "s1",
+            name: "Scene",
+            composition: "flow",
+            pinned: false,
+            durationVh: 200,
+            layers: [],
+            tracks: [
+              {
+                id: "t1",
+                target: "hero-title",
+                easing: "linear",
+                props: {
+                  opacity: [{ at: 0, value: 0 }, { at: 1, value: 1 }],
+                  blur: [{ at: 0, value: 0 }, { at: 1, value: 20 }],
+                },
+              },
+            ],
+          },
+        ],
+      })
+    );
+    const sceneEl = document.createElement("section");
+    vi.spyOn(sceneEl, "getBoundingClientRect").mockReturnValue({ top: -400, height: 1600 } as DOMRect);
+    document.body.appendChild(sceneEl);
+    Object.defineProperty(window, "innerHeight", { value: 800, configurable: true });
+
+    const titleEl = document.createElement("h1");
+    document.body.appendChild(titleEl);
+
+    runtime.registerScene("s1", sceneEl);
+    runtime.targets.register("hero-title", titleEl);
+    runtime.attach(new WindowScrollRoot());
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    expect(titleEl.style.getPropertyValue("--exp-opacity")).toBe("0.5"); // cheap -- still written
+    expect(titleEl.style.getPropertyValue("--exp-blur")).toBe(""); // expensive -- skipped under "lite"
+    runtime.detach();
+  });
+
+  it('settings.performance="auto"/"high" still write expensive properties like blur', async () => {
+    const runtime = new ExperienceRuntime(
+      config({
+        enabled: true,
+        scenes: [
+          {
+            id: "s1",
+            name: "Scene",
+            composition: "flow",
+            pinned: false,
+            durationVh: 200,
+            layers: [],
+            tracks: [{ id: "t1", target: "hero-title", easing: "linear", props: { blur: [{ at: 0, value: 0 }, { at: 1, value: 20 }] } }],
+          },
+        ],
+      })
+    );
+    const sceneEl = document.createElement("section");
+    vi.spyOn(sceneEl, "getBoundingClientRect").mockReturnValue({ top: -400, height: 1600 } as DOMRect);
+    document.body.appendChild(sceneEl);
+    Object.defineProperty(window, "innerHeight", { value: 800, configurable: true });
+
+    const titleEl = document.createElement("h1");
+    document.body.appendChild(titleEl);
+
+    runtime.registerScene("s1", sceneEl);
+    runtime.targets.register("hero-title", titleEl);
+    runtime.attach(new WindowScrollRoot());
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    expect(titleEl.style.getPropertyValue("--exp-blur")).toBe("10px");
+    runtime.detach();
+  });
+
   it("skips a track whose target was never registered, without throwing", async () => {
     const runtime = new ExperienceRuntime(config({ enabled: true }));
     const sceneEl = document.createElement("section");
