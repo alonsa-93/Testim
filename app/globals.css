@@ -530,6 +530,25 @@
 }
 
 /**
+ * Experience Engine (Phase 2, docs/experience-audit.md §8): קידומת
+ * --exp-* בלבד. הכותב היחיד הוא components/experience/experience-runtime.ts.
+ * מאפיינים עצמאיים (translate/scale/rotate), לא transform מרוכב —
+ * בדיוק כמו Reveal — כדי לא להתנגש עם .fx-tilt (ראו §1.3 באודיט).
+ * data-scrub על ExperienceTarget מפעיל אוטומטית את מתג הכיבוי שממש
+ * מעל: זה בדיוק ההוק ששמור שם בלי מפיק (נספח א' באודיט) — עכשיו יש לו.
+ * reduced-motion: אין כלל @media כאן במכוון — ה-Provider (Phase 2)
+ * פשוט לא מפעיל את ה-runtime תחת reduced-motion, כך שהמשתנים תמיד
+ * נשארים בברירת המחדל הנייטרלית למטה. אותה פילוסופיה כמו statement.tsx.
+ */
+.exp-motion {
+  translate: var(--exp-x, 0%) var(--exp-y, 0%);
+  scale: var(--exp-scale, 1);
+  rotate: var(--exp-rotate, 0deg);
+  opacity: var(--exp-opacity, 1);
+  filter: blur(var(--exp-blur, 0px));
+}
+
+/**
  * שלב ב' — אינטגרציית הבלוקים: תוספות CSS קטנות לבלוקים ולאפקטים
  * שנחווטו בפועל (drawn-line בשלבי תהליך, פס נגלל עם השהיה, ברק
  * חולף בכפתורים, ובלוק ה"הצהרה" הנגללת). לא נוגעות בכללי שלב א'.

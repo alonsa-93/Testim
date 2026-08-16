@@ -3,6 +3,8 @@ import {
   ElementScrollRoot,
   WindowScrollRoot,
   createScrollRoot,
+  findScrollRoot,
+  measureRelativeToRoot,
 } from "@/lib/scroll-root";
 
 /**
@@ -119,5 +121,85 @@ describe("createScrollRoot — factory", () => {
   it("returns an ElementScrollRoot when a container is given", () => {
     const el = document.createElement("div");
     expect(createScrollRoot(el)).toBeInstanceOf(ElementScrollRoot);
+  });
+});
+
+describe("findScrollRoot — auto-detection (Phase 2)", () => {
+  afterEach(() => {
+    document.body.innerHTML = "";
+  });
+
+  it("returns WindowScrollRoot when no scrolling ancestor exists", () => {
+    const el = document.createElement("div");
+    document.body.appendChild(el);
+    expect(findScrollRoot(el)).toBeInstanceOf(WindowScrollRoot);
+  });
+
+  it("finds the nearest ancestor with overflow-y: auto", () => {
+    const scrollContainer = document.createElement("main");
+    scrollContainer.style.overflowY = "auto";
+    const target = document.createElement("div");
+    scrollContainer.appendChild(target);
+    document.body.appendChild(scrollContainer);
+
+    const root = findScrollRoot(target);
+    expect(root).toBeInstanceOf(ElementScrollRoot);
+    expect(root.getElement()).toBe(scrollContainer);
+  });
+
+  it("skips an overflow-hidden/clip ancestor and keeps walking up to the real scrollport (the exact R1 studio bug)", () => {
+    const scrollport = document.createElement("main");
+    scrollport.style.overflowY = "auto";
+    const frameChrome = document.createElement("div");
+    frameChrome.style.overflowY = "clip"; // the fake browser-chrome frame, post-fix
+    const target = document.createElement("div");
+    frameChrome.appendChild(target);
+    scrollport.appendChild(frameChrome);
+    document.body.appendChild(scrollport);
+
+    const root = findScrollRoot(target);
+    expect(root).toBeInstanceOf(ElementScrollRoot);
+    expect(root.getElement()).toBe(scrollport); // not frameChrome
+  });
+
+  it("finds the nearest scroll container even through several non-scrolling ancestors", () => {
+    const scrollport = document.createElement("main");
+    scrollport.style.overflowY = "scroll";
+    const a = document.createElement("div");
+    const b = document.createElement("div");
+    const target = document.createElement("span");
+    b.appendChild(target);
+    a.appendChild(b);
+    scrollport.appendChild(a);
+    document.body.appendChild(scrollport);
+
+    expect(findScrollRoot(target).getElement()).toBe(scrollport);
+  });
+});
+
+describe("measureRelativeToRoot", () => {
+  it("for WindowScrollRoot, top is the element's raw viewport-relative position", () => {
+    const el = document.createElement("div");
+    document.body.appendChild(el);
+    vi.spyOn(el, "getBoundingClientRect").mockReturnValue({ top: 150 } as DOMRect);
+
+    const result = measureRelativeToRoot(el, new WindowScrollRoot());
+    expect(result.top).toBe(150);
+    expect(result.viewportSize).toBe(window.innerHeight);
+  });
+
+  it("for ElementScrollRoot, top is relative to the container's own boundary, not the window's", () => {
+    const container = document.createElement("main");
+    document.body.appendChild(container);
+    vi.spyOn(container, "getBoundingClientRect").mockReturnValue({ top: 80 } as DOMRect);
+    Object.defineProperty(container, "clientHeight", { value: 500, configurable: true });
+
+    const el = document.createElement("div");
+    container.appendChild(el);
+    vi.spyOn(el, "getBoundingClientRect").mockReturnValue({ top: 130 } as DOMRect);
+
+    const result = measureRelativeToRoot(el, new ElementScrollRoot(container));
+    expect(result.top).toBe(50); // 130 - 80: the container starts 80px into the window, e.g. past a sidebar
+    expect(result.viewportSize).toBe(500);
   });
 });

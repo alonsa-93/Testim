@@ -6,6 +6,7 @@ import { splitWordsWithEmphasis } from "@/lib/rich-text";
 import { statementDefaults, type StatementContent } from "./statement.meta";
 import type { BlockContent } from "@/lib/fields";
 import { useReducedMotion } from "@/components/fx/use-reduced-motion";
+import { findScrollRoot, measureRelativeToRoot } from "@/lib/scroll-root";
 
 /**
  * בלוק "הצהרה": סקשן sticky גבוה שבו פסקה גדולה נדלקת מילה-מילה לפי
@@ -16,6 +17,12 @@ import { useReducedMotion } from "@/components/fx/use-reduced-motion";
  * (fx-statement-word ב-globals.css) נופל לברירת מחדל --progress:1 כשאין
  * JS בכלל — כך שהפסקה מוצגת גלויה במלואה בלי תלות בסקריפט. reduced-motion
  * מדלג על מאזין הגלילה וקובע --progress ל-1 מיד עם ה-mount.
+ *
+ * Phase 2 (docs/experience-audit.md §3.1 R1, §6): משתמש ב-findScrollRoot
+ * במקום ב-window ישירות — זה בדיוק התיקון לבאג שאומת אמפירית: בתוך
+ * הסטודיו scroll root האמיתי הוא ה-<main overflow-auto> של התצוגה
+ * החיה, לא window. הבלוק הזה עכשיו עובד זהה בשני ההקשרים, בלי לדעת
+ * באיזה מהם הוא נמצא.
  *
  * הקובץ הזה מייצא *רק* את הרכיב — ה-BlockDef חי ב-statement.meta.ts
  * הלא-"use client", ומורכב יחד ב-registry.ts. ראו הערה ב-navbar.meta.ts.
@@ -35,24 +42,23 @@ export function Statement({ content }: { content: BlockContent }) {
       return;
     }
 
+    const scrollRoot = findScrollRoot(el);
     let frame: number | null = null;
     const update = () => {
       frame = null;
-      const rect = el.getBoundingClientRect();
-      const total = rect.height - window.innerHeight;
-      const progress = total > 0 ? Math.min(1, Math.max(0, -rect.top / total)) : 1;
+      const { top, height, viewportSize } = measureRelativeToRoot(el, scrollRoot);
+      const total = height - viewportSize;
+      const progress = total > 0 ? Math.min(1, Math.max(0, -top / total)) : 1;
       el.style.setProperty("--progress", String(progress));
     };
-    const onScroll = () => {
+    const onUpdate = () => {
       if (frame === null) frame = requestAnimationFrame(update);
     };
 
     update();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
+    const unsubscribe = scrollRoot.subscribe(onUpdate);
     return () => {
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
+      unsubscribe();
       if (frame !== null) cancelAnimationFrame(frame);
     };
   }, [reducedMotion]);

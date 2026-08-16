@@ -45,7 +45,7 @@ describe("Statement — reduced-motion reactivity", () => {
     expect(addSpy).toHaveBeenCalledWith("scroll", expect.any(Function), { passive: true });
 
     unmount();
-    expect(removeSpy).toHaveBeenCalledWith("scroll", expect.any(Function));
+    expect(removeSpy).toHaveBeenCalledWith("scroll", expect.any(Function), expect.anything());
   });
 
   it("switches to the reduced-motion branch live when the OS preference changes mid-session", () => {
@@ -61,7 +61,29 @@ describe("Statement — reduced-motion reactivity", () => {
     });
 
     // האפקט הקודם חייב היה להתנקות (הסרת מאזיני scroll/resize הישנים)
-    expect(removeSpy).toHaveBeenCalledWith("scroll", expect.any(Function));
+    expect(removeSpy).toHaveBeenCalledWith("scroll", expect.any(Function), expect.anything());
     expect(section.style.getPropertyValue("--progress")).toBe("1");
+  });
+
+  it("R1 regression: inside a scrollable container (studio-like), listens on the container, not window", () => {
+    // זה בדיוק הבאג שאומת אמפירית ב-R1 (§3.1 באודיט): לפני Phase 2,
+    // Statement האזין תמיד ל-window, כך שגלילה בתוך <main overflow-auto>
+    // של הסטודיו לא עדכנה --progress בכלל. עכשיו findScrollRoot אמור
+    // לזהות את הקונטיינר הגולל ולהאזין לו ישירות.
+    const mql = new FakeMediaQueryList(true); // not reduced
+    vi.spyOn(window, "matchMedia").mockReturnValue(mql as unknown as MediaQueryList);
+
+    const scrollport = document.createElement("main");
+    scrollport.style.overflowY = "auto";
+    document.body.appendChild(scrollport);
+    const addSpy = vi.spyOn(scrollport, "addEventListener");
+    const windowAddSpy = vi.spyOn(window, "addEventListener");
+
+    render(<Statement content={{ text: "שלום עולם" }} />, { container: scrollport });
+
+    expect(addSpy).toHaveBeenCalledWith("scroll", expect.any(Function), { passive: true });
+    expect(windowAddSpy).not.toHaveBeenCalledWith("scroll", expect.any(Function), expect.anything());
+
+    scrollport.remove();
   });
 });

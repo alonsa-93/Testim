@@ -102,3 +102,53 @@ export class ElementScrollRoot implements ScrollRoot {
 export function createScrollRoot(container?: HTMLElement | null): ScrollRoot {
   return container ? new ElementScrollRoot(container) : new WindowScrollRoot();
 }
+
+/**
+ * מוצא את ה-ScrollRoot הנכון אוטומטית, על ידי טיפוס מ-el כלפי מעלה
+ * וחיפוש האב הקרוב ביותר עם overflow-y: auto|scroll בפועל (Phase 2).
+ * זה בדיוק אותו אלגוריתם ש-`position: sticky` עצמו משתמש בו כדי לקבוע
+ * "מי אב הגלילה שלי" — כך שרכיב Experience-aware (Statement, ה-runtime)
+ * תמיד מתאים את עצמו נכון גם בדף ציבורי (window) וגם בכל קונטיינר
+ * מקונן עתידי (§6 באודיט: "Future: Arbitrary embedded scroll
+ * containers"), בלי provider ייעודי לכל הקשר ובלי ענף "אם זה סטודיו".
+ *
+ * שים לב: `overflow: hidden`/`clip` **לא** נספרים כאן בכוונה — הם
+ * לא תיבות גלילה אמיתיות (אין להן מנגנון גלילה), ולכן sticky ו-
+ * findScrollRoot כאחד מדלגים מעליהן ומוצאים את אב הגלילה *האמיתי*
+ * שמעליהן. זו הסיבה שהחלפת overflow-hidden ב-overflow-clip על מסגרת
+ * הדפדפן המדומה בסטודיו (studio-app.tsx) פותרת גם את ה-CSS sticky
+ * וגם משאירה את החישוב כאן נכון בלי טיפול מיוחד.
+ */
+export function findScrollRoot(el: HTMLElement | null): ScrollRoot {
+  let node = el?.parentElement ?? null;
+  while (node && node !== document.body) {
+    const overflowY = getComputedStyle(node).overflowY;
+    if (overflowY === "auto" || overflowY === "scroll") {
+      return new ElementScrollRoot(node);
+    }
+    node = node.parentElement;
+  }
+  return new WindowScrollRoot();
+}
+
+/**
+ * מודד רכיב יחסית ל-scroll root נתון: מחזיר rect.top יחסי לגבול
+ * ה-viewport של ה-root (לא בהכרח לחלון!) וגובה ה-viewport של אותו
+ * root. זו ההכללה של הנוסחה שstatement.tsx כתב במקור מול window
+ * בלבד — עכשיו עובדת זהה עבור WindowScrollRoot ו-ElementScrollRoot,
+ * כולל כש-ElementScrollRoot לא ממלא את כל חלון הדפדפן (מצב הסטודיו
+ * בדיוק — יש סרגל צד, ה-<main> לא מתחיל ב-x=0/y=0 של החלון).
+ */
+export function measureRelativeToRoot(
+  el: HTMLElement,
+  root: ScrollRoot
+): { top: number; height: number; viewportSize: number } {
+  const elementRect = el.getBoundingClientRect();
+  const rootEl = root.getElement();
+  const containerTop = rootEl instanceof HTMLElement ? rootEl.getBoundingClientRect().top : 0;
+  return {
+    top: elementRect.top - containerTop,
+    height: elementRect.height,
+    viewportSize: root.getViewportSize(),
+  };
+}

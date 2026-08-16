@@ -958,7 +958,13 @@ export function StudioApp() {
             className="mx-auto transition-all duration-300"
             style={{ maxWidth: viewports[viewport].width }}
           >
-            <div className="overflow-hidden rounded-xl border border-slate-300 bg-white shadow-lg">
+            {/* overflow-clip ולא overflow-hidden: קוצץ פינות עגולות בדיוק
+                כמו hidden, אבל בניגוד ל-hidden הוא *לא* תיבת גלילה מבחינת
+                CSS -- ולכן position:sticky בתוכן חוצה אותו ונאחז ב-<main
+                overflow-auto> האמיתי מסביב (ראו R1, docs/experience-audit.md
+                §3.1: זו הייתה השבירה השנייה, הבלתי-תלויה, שמנעה מ-sticky
+                להיאחז בכלל בתוך הסטודיו). Phase 2. */}
+            <div className="overflow-clip rounded-xl border border-slate-300 bg-white shadow-lg">
               <div className="flex items-center gap-1.5 border-b border-slate-200 bg-slate-50 px-4 py-2.5">
                 <span className="size-2.5 rounded-full bg-slate-300" aria-hidden="true" />
                 <span className="size-2.5 rounded-full bg-slate-300" aria-hidden="true" />
