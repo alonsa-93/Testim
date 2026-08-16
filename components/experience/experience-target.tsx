@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useRef, type ElementType, type ReactNode } from "react";
+import { useLayoutEffect, useRef, type CSSProperties, type ElementType, type ReactNode } from "react";
 import { useExperienceRuntime } from "./experience-provider";
 import { cn } from "@/lib/cn";
 
@@ -29,11 +29,14 @@ export function ExperienceTarget({
   id,
   as: Tag = "div",
   className,
+  style,
   children,
 }: {
   id: string;
   as?: ElementType;
   className?: string;
+  /** מוזג עם ברירות המחדל של .exp-motion -- בעיקר לשימוש ע"י Phase 6 layers (מיקום stage/flow) */
+  style?: CSSProperties;
   children: ReactNode;
 }) {
   const runtime = useExperienceRuntime();
@@ -47,7 +50,13 @@ export function ExperienceTarget({
   }, [runtime, id]);
 
   return (
-    <Tag ref={ref} data-experience-target={id} data-scrub="" className={cn("exp-motion", className)}>
+    <Tag
+      ref={ref}
+      data-experience-target={id}
+      data-scrub=""
+      className={cn("exp-motion", className)}
+      style={style}
+    >
       {children}
     </Tag>
   );

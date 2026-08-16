@@ -195,6 +195,52 @@ export interface LayerStyle {
   shadow?: "none" | "soft" | "strong";
 }
 
+const ANCHOR_ORIGIN: Record<LayerAnchor, string> = {
+  start: "0% 50%",
+  center: "50% 50%",
+  end: "100% 50%",
+};
+
+const SHADOW_CLASS: Record<NonNullable<LayerStyle["shadow"]>, string> = {
+  none: "shadow-none",
+  soft: "shadow-card",
+  strong: "shadow-lg",
+};
+
+/**
+ * ממיר LayerLayout ל-inline style בפועל (§12.2, §12.4, §77 RTL).
+ * stage mode = position:absolute יחסית ל-.exp-stage (position:relative
+ * תמיד, ראו experience-scene.tsx). insetInlineStart/insetBlockStart —
+ * לוגי, לא left/top גולמי — כדי לעבוד נכון גם ב-RTL. flow mode לא
+ * נוגע ב-position בכלל, רק ברוחב.
+ */
+export function layerLayoutStyle(layout: LayerLayout): Record<string, string | number> {
+  const style: Record<string, string | number> = {};
+  if (layout.mode === "stage") {
+    style.position = "absolute";
+    if (layout.x !== undefined) style.insetInlineStart = layout.x;
+    if (layout.y !== undefined) style.insetBlockStart = layout.y;
+    if (layout.zIndex) style.zIndex = Z_LAYER_ORDER[layout.zIndex];
+  }
+  if (layout.width) style.width = layout.width;
+  if (layout.maxWidth) style.maxWidth = layout.maxWidth;
+  if (layout.anchor) style.transformOrigin = ANCHOR_ORIGIN[layout.anchor];
+  return style;
+}
+
+export function layerStyleToCss(style: LayerStyle | undefined): Record<string, string | number> {
+  if (!style) return {};
+  const css: Record<string, string | number> = {};
+  if (style.color) css.color = resolveThemeColor(style.color);
+  if (style.background) css.backgroundColor = resolveThemeColor(style.background);
+  if (typeof style.radius === "number") css.borderRadius = `${style.radius}px`;
+  return css;
+}
+
+export function layerShadowClass(shadow: LayerStyle["shadow"]): string | undefined {
+  return shadow ? SHADOW_CLASS[shadow] : undefined;
+}
+
 export interface TextLayerContent {
   text: string;
   /** תג סמנטי אמיתי — Text layer לא ברירת מחדל ל-div (§12.6) */
@@ -215,7 +261,8 @@ export interface ShapeLayerContent {
 export interface ButtonLayerContent {
   label: string;
   href: string;
-  variant?: "primary" | "secondary" | "ghost";
+  /** תואם ל-Variant הקיים ב-components/ui/button.tsx -- אין ספריית כפתורים שנייה */
+  variant?: "primary" | "outline" | "ghost" | "inverted";
 }
 
 /** הגשר בין Experience לבלוקים קיימים — לא משכפל תוכן, רק מפנה (§12.3) */

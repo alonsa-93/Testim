@@ -65,7 +65,10 @@ export function ExperienceScene({
         style={isPinned ? ({ minHeight: `${durationVh}svh` } as CSSProperties) : undefined}
       >
         <div
-          className={cn("exp-stage overflow-hidden", isPinned ? "sticky top-0 min-h-svh" : "min-h-svh")}
+          className={cn(
+            "exp-stage relative overflow-hidden",
+            isPinned ? "sticky top-0 min-h-svh" : "min-h-svh"
+          )}
           style={backgroundStyle}
         >
           {children}
