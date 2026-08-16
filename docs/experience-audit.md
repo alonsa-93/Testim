@@ -186,7 +186,7 @@ scene, target, timeline או keyframes.
 | G6 | אין layer primitives (text/image/shape/button/block-ref) | חוסם ל-freeform | ראו §12 |
 | G7 | `FieldEditor` לא יכול לבטא scene/layer/keyframes (מאושר: שטוח) | חוסם ל-Studio | §1.5 |
 | G8 | אין מערכת ערכים responsive מפורשת (desktop/tablet/mobile) | גבוה | יש `clamp()` בלבד |
-| G9 | `matchMedia` נקרא פעם אחת ב-mount ואין האזנה לשינוי | בינוני | `statement.tsx:31`, `tilt-card.tsx:40` — בטיפול ב-Phase 0.5 |
+| G9 | `matchMedia` לreduced-motion נקרא פעם אחת ב-mount ואין האזנה לשינוי | בינוני | `statement.tsx:31`, `count-up.tsx:38` — בטיפול ב-Phase 0.5. **תוקן:** `tilt-card.tsx:40` הוא בדיקת יכולת מצביע (`hover:hover) and (pointer:fine`), לא reduced-motion — טעות בגרסה קודמת של המסמך; `.fx-tilt` כבר מטופל נכון ב-CSS בלבד (`@media (prefers-reduced-motion: reduce) { .fx-tilt { transform: none } }`), אותה קונבנציה כמו Reveal |
 | G10 | אין debug tooling | בינוני | ראו §13 |
 | G11 | **אין תשתית בדיקות בכלל** — ב-`package.json` אין test runner | גבוה | **פתור** — vitest מאושר, §16 |
 | G12 | אין תיקיית `docs/` | נמוך | נוצרה עם המסמך הזה |
@@ -1041,7 +1041,7 @@ docs/
 | Phase | תוכן | שער יציאה |
 |---|---|---|
 | **0** | האודיט | ✅ הושלם ואושר |
-| **0.5** | **Motion Foundation** — `vitest` + baseline regression tests + `ScrollRoot` (Window+Element) + תיקון cleanup ל-`CountUp` + מדיניות יחידות viewport + עקביות מאזין reduced-motion | build+lint+tests ירוקים; דפים קיימים ללא שינוי התנהגותי; **לא** ניקוי טכני רחב מעבר לכך |
+| **0.5** | **Motion Foundation** — `vitest` + baseline regression tests + `ScrollRoot` (Window+Element) + תיקון cleanup ל-`CountUp` + מדיניות יחידות viewport + עקביות מאזין reduced-motion | ✅ **הושלם.** 62 בדיקות עוברות (`npm test`), `build`+`lint` נקיים, אומת בדפדפן אמיתי (Playwright מול production build): `/p/demo` — Statement `--progress` עדיין מתקדם 0→1 בגלילה, CountUp מציג ערכים סופיים תקינים; reduced-motion אמיתי (`emulateMedia`) — `--progress` נשאר 1 גם אחרי ניסיון גלילה; `/studio` נטען ללא קריסה. ראו §21 לפירוט |
 | **1** | סכמה: טיפוסים, `normalizeExperience`, ולידציה, versioning, Property Metadata | `Page` ישן עובר ללא שינוי; בדיקות יחידה עוברות |
 | **2** | Runtime: `ExperienceProvider`, rAF יחיד, `SceneRegistry`, `TargetRegistry` — **כולל תיקון באג ה-Statement/sticky בסטודיו דרך ה-`ScrollRoot`** | Statement עובד גם ב-`/p/demo` וגם ב-`/studio`; אפס hack ייעודי לסטודיו |
 | **3** | Timeline: interpolate, keyframes, easing, Track Ownership validation | בדיקות יחידה על 0/0.25/0.5/1/clamp/NaN; זיהוי התנגשות בעלות |
@@ -1156,6 +1156,48 @@ docs/
 
 ---
 
+## 21. Phase 0.5 — דוח ביצוע (Motion Foundation, הושלם)
+
+מומש באותו סשן, מיד אחרי אישור המסמך הזה. שינויים בפועל:
+
+| קובץ | שינוי |
+|---|---|
+| `package.json`, `package-lock.json` | `vitest`, `@vitejs/plugin-react`, `jsdom`, `@testing-library/react`, `@testing-library/dom`, `@testing-library/jest-dom`, `vite-tsconfig-paths` כ-devDependencies; סקריפטים `test` (`vitest run`) ו-`test:watch` (`vitest`) |
+| `vitest.config.mts` | jsdom environment, tsconfig-paths, `setupFiles: vitest.setup.ts` |
+| `vitest.setup.ts` | פוליפילים ל-`matchMedia`/`IntersectionObserver`/`ResizeObserver`/`requestAnimationFrame` (jsdom לא מממש אף אחד מהם, ורכיבי fx אמיתיים נבדקים כאן, לא מדומים) + `afterEach(cleanup)` גלובלי |
+| `lib/scroll-root.ts` **(חדש)** | `ScrollRoot` interface + `WindowScrollRoot` + `ElementScrollRoot` + `createScrollRoot()` — בדיוק לפי §6 |
+| `components/fx/use-reduced-motion.ts` **(חדש)** | הוק משותף `useReducedMotion()`; ערך התחלתי סינכרוני (lazy `useState` initializer) כדי שלא יהיה רגע-ביניים שגוי, ומאזין `change` אמיתי |
+| `components/fx/count-up.tsx` | עבר ל-`useReducedMotion()`; מסלול ה-rAF (`rafId`) עכשיו מבוטל ב-cleanup — תיקון דליפת ה-rAF (נספח ד'.1) |
+| `components/blocks/statement.tsx` | עבר ל-`useReducedMotion()` (תלות ב-effect); `min-h-[240vh]` → `min-h-[240svh]` ליישור משפחת יחידות עם `min-h-svh` הקיים (נספח ד'.3) |
+| `tests/*.test.ts(x)` **(9 קבצים חדשים, 62 בדיקות)** | ראו §16.2–16.3 — page/theme normalization, page I/O, effects resolution, standard+studio render smoke, RTL, ScrollRoot, useReducedMotion, CountUp cleanup, Statement reactivity |
+
+**תיקון לאודיט עצמו תוך כדי העבודה:** G9/נספח ד'.5 טענו בטעות ש-
+`tilt-card.tsx:40` הוא מאזין reduced-motion חסר-עקביות. בפועל זו בדיקת
+יכולת מצביע (`hover:hover) and (pointer:fine`), לא קשורה כלל, ו-
+`.fx-tilt` כבר מטופל נכון ב-CSS בלבד. תוקן במקום.
+
+**שער היציאה — כולו ירוק:**
+- `npm test` → 62/62 עוברות
+- `npm run lint` → נקי
+- `npm run build` → מצליח, `tsc` נקי על כל הפרויקט (כולל `tests/`)
+- אימות Playwright מול production build אמיתי (`npm run start`):
+  - `/p/demo`: `--progress` של Statement מתקדם 0→1 בגלילה רגילה
+    (כמו לפני התיקון — אין רגרסיה); תחת `emulateMedia({reducedMotion:
+    "reduce"})` נשאר קבוע על 1 גם אחרי ניסיון גלילה (זה בדיוק ההתנהגות
+    הנכונה); CountUp מציג ערכים סופיים תקינים (`+10`, `+198`, `81%`)
+  - `/studio`: נטען ללא קריסה, 72 כפתורים מרונדרים, `<main>` קיים
+  - שגיאת console היחידה בשני המקרים היא `ERR_CONNECTION_RESET` על
+    Google Fonts — תוצר של סביבת הסנדבוקס חסרת האינטרנט, לא קשור
+    לשינויים
+
+**מה עדיין לא נגעתי בו (במכוון, מחוץ להיקף §4/§87 במסמך התיקון):**
+איחוד שתי קונבנציות ה-IntersectionObserver (Reveal מול CountUp),
+מיגרציית CountUp ל-runtime מבוסס-CSS-vars כמו Statement, ותיקון
+`min-h-screen` של `.ds-scope` ברמת העמוד. אלה נשארים תיעוד לעתיד
+בנספח ד', לא משימות Phase 0.5.
+
+---
+
 ## נספח א' — וו-תלייה שכבר קיימים ואפשר לאמץ בחינם
 
 סקר מעמיק של הבלוקים העלה מספר הכנות שכבר קיימות בקוד ואף אחד לא צורך
@@ -1233,6 +1275,9 @@ cleanup project"):
    — לא לתקן את `CountUp` להשתמש ב-runtime (מחוץ להיקף Phase 0.5; רק
    ה-cleanup bug מתוקן שם).
 5. `matchMedia` לreduced-motion נקרא פעם אחת ב-mount, בלי מאזין לשינוי,
-   בשני מקומות: `statement.tsx:31`, `tilt-card.tsx:40`. **← Phase 0.5**
+   בשני מקומות: `statement.tsx:31`, `count-up.tsx:38`. **← Phase 0.5**
    (עקביות מאזין reduced-motion — הופך ל-hook משותף `useReducedMotion()`
-   שנצרך גם על ידי Experience Provider מ-Phase 2 ואילך)
+   ב-`components/fx/use-reduced-motion.ts`, שנצרך גם על ידי Experience
+   Provider מ-Phase 2 ואילך). `tilt-card.tsx:40` **אינו** קשור —
+   ראו תיקון ב-G9: זו בדיקת יכולת מצביע, ו-`.fx-tilt` כבר מטופל נכון
+   דרך CSS `@media (prefers-reduced-motion: reduce)` בלבד, ללא JS.

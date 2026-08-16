@@ -5,6 +5,7 @@ import { Container } from "@/components/ui/section";
 import { splitWordsWithEmphasis } from "@/lib/rich-text";
 import { statementDefaults, type StatementContent } from "./statement.meta";
 import type { BlockContent } from "@/lib/fields";
+import { useReducedMotion } from "@/components/fx/use-reduced-motion";
 
 /**
  * בלוק "הצהרה": סקשן sticky גבוה שבו פסקה גדולה נדלקת מילה-מילה לפי
@@ -23,12 +24,13 @@ export function Statement({ content }: { content: BlockContent }) {
   const c = { ...statementDefaults, ...content } as StatementContent;
   const words = splitWordsWithEmphasis(c.text);
   const wrapRef = useRef<HTMLElement>(null);
+  const reducedMotion = useReducedMotion();
 
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
 
-    if (!window.matchMedia("(prefers-reduced-motion: no-preference)").matches) {
+    if (reducedMotion) {
       el.style.setProperty("--progress", "1");
       return;
     }
@@ -53,12 +55,18 @@ export function Statement({ content }: { content: BlockContent }) {
       window.removeEventListener("resize", onScroll);
       if (frame !== null) cancelAnimationFrame(frame);
     };
-  }, []);
+  }, [reducedMotion]);
 
   return (
     // אין overflow:hidden כאן או בהורים — sticky בתוך מכל גבוה דורש
-    // שאף אב לא יחתוך/יגלול בעצמו (ראו scroll-text-report)
-    <section ref={wrapRef} className="relative min-h-[240vh]">
+    // שאף אב לא יחתוך/יגלול בעצמו (ראו scroll-text-report).
+    // Phase 0.5 — מדיניות יחידות viewport (docs/experience-audit.md
+    // §18 נספח ד'.3): 240svh ולא 240vh, כדי שמכל המסלול ומכל ה-sticky
+    // (min-h-svh) ישתמשו באותה משפחת יחידה (small viewport height —
+    // הגובה המובטח המינימלי, לא נקפץ עם כיווץ/הרחבה של סרגל הכתובת
+    // במובייל). מתאם גם לעתיד ל-ScrollRoot.getViewportSize() שממדוד
+    // תמיד את הגובה החי בפועל, לא את ה-large viewport הסטטי.
+    <section ref={wrapRef} className="relative min-h-[240svh]">
       <div className="sticky top-0 flex min-h-svh items-center">
         <Container>
           <p

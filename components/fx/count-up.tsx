@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useReducedMotion } from "./use-reduced-motion";
 
 /**
  * מונה מספרים: סופר מ-0 (בעצם ממש קרוב ל-0) עד הערך הסופי כשהאלמנט
@@ -30,12 +31,18 @@ export function CountUp({ value, className }: { value: string; className?: strin
   const ref = useRef<HTMLSpanElement>(null);
   // ה-SSR והצגה ראשונית תמיד מציגים את הערך הסופי המקורי
   const [display, setDisplay] = useState(value);
+  const reducedMotion = useReducedMotion();
 
   useEffect(() => {
     const parsed = parseStatValue(value);
     const el = ref.current;
-    if (!parsed || !el) return;
-    if (!window.matchMedia("(prefers-reduced-motion: no-preference)").matches) return;
+    if (!parsed || !el || reducedMotion) return;
+
+    // מזהה ה-rAF הפעיל של לולאת הספירה — Phase 0.5: זה היה חסר לגמרי
+    // קודם, כך שביטול (unmount, או reducedMotion שנהיה true תוך כדי
+    // ספירה) לא עצר בפועל את הלולאה; היא המשיכה לקרוא ל-setDisplay
+    // על רכיב שכבר לא קיים. עכשיו ה-cleanup מבטל אותו במפורש.
+    let rafId: number | null = null;
 
     const io = new IntersectionObserver(
       ([entry]) => {
@@ -48,15 +55,18 @@ export function CountUp({ value, className }: { value: string; className?: strin
           const eased = 1 - (1 - t) * (1 - t); // ease-out-quad
           const current = Math.round(parsed.n * eased);
           setDisplay(`${parsed.prefix}${formatter.format(current)}${parsed.suffix}`);
-          if (t < 1) requestAnimationFrame(tick);
+          rafId = t < 1 ? requestAnimationFrame(tick) : null;
         };
-        requestAnimationFrame(tick);
+        rafId = requestAnimationFrame(tick);
       },
       { rootMargin: "0px 0px 15% 0px", threshold: 0.6 }
     );
     io.observe(el);
-    return () => io.disconnect();
-  }, [value]);
+    return () => {
+      io.disconnect();
+      if (rafId !== null) cancelAnimationFrame(rafId);
+    };
+  }, [value, reducedMotion]);
 
   return (
     <span ref={ref} className={className} dir="ltr">
