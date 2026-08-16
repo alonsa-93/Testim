@@ -1,6 +1,7 @@
 import { Section } from "@/components/ui/section";
 import { Button } from "@/components/ui/button";
 import { Reveal } from "@/components/fx/reveal";
+import { ExperienceTarget } from "@/components/experience/experience-target";
 import { ANIM_FIELDS, resolveBlockAnim } from "@/lib/effects";
 import { cn } from "@/lib/cn";
 import type { BlockDef } from "@/lib/blocks";
@@ -35,30 +36,32 @@ function Cta({ content, theme }: { content: BlockContent; theme?: Theme }) {
 
   return (
     <Section>
-      <Reveal
-        anim={anim}
-        className="relative overflow-hidden rounded-card bg-primary px-6 py-14 text-center text-on-primary shadow-card md:py-16"
-      >
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -top-24 start-8 size-64 rounded-full bg-on-primary/10 blur-2xl"
-        />
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -bottom-28 end-8 size-72 rounded-full bg-accent/25 blur-2xl"
-        />
-        <h2 className="relative mx-auto max-w-2xl text-h2">{c.title}</h2>
-        {c.text && (
-          <p className="relative mx-auto mt-4 max-w-xl opacity-85">{c.text}</p>
-        )}
-        {c.ctaLabel && (
-          <div className="relative mt-8">
-            <Button variant="inverted" size="lg" href={c.ctaHref} className={cn(btnFx)}>
-              {c.ctaLabel}
-            </Button>
-          </div>
-        )}
-      </Reveal>
+      <ExperienceTarget id="cta-content" as="div">
+        <Reveal
+          anim={anim}
+          className="relative overflow-hidden rounded-card bg-primary px-6 py-14 text-center text-on-primary shadow-card md:py-16"
+        >
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute -top-24 start-8 size-64 rounded-full bg-on-primary/10 blur-2xl"
+          />
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute -bottom-28 end-8 size-72 rounded-full bg-accent/25 blur-2xl"
+          />
+          <h2 className="relative mx-auto max-w-2xl text-h2">{c.title}</h2>
+          {c.text && (
+            <p className="relative mx-auto mt-4 max-w-xl opacity-85">{c.text}</p>
+          )}
+          {c.ctaLabel && (
+            <ExperienceTarget id="cta-button" as="div" className="relative mt-8">
+              <Button variant="inverted" size="lg" href={c.ctaHref} className={cn(btnFx)}>
+                {c.ctaLabel}
+              </Button>
+            </ExperienceTarget>
+          )}
+        </Reveal>
+      </ExperienceTarget>
     </Section>
   );
 }

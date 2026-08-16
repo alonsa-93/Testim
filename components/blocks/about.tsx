@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { IconCheck } from "@/components/icons";
 import { Reveal } from "@/components/fx/reveal";
+import { ExperienceTarget } from "@/components/experience/experience-target";
 import { ANIM_FIELDS, resolveBlockAnim, staggerChild, staggerStyle } from "@/lib/effects";
 import type { BlockDef } from "@/lib/blocks";
 import type { BlockContent } from "@/lib/fields";
@@ -52,56 +53,59 @@ function About({
     <Section id={anchor ?? "about"}>
       <div className="grid items-center gap-14 lg:grid-cols-2">
         {/* קומפוזיציה ויזואלית דקורטיבית */}
-        <Reveal
-          anim={staggerChild(anim, 0)}
-          className="relative order-2 mx-auto w-full max-w-md lg:order-1 lg:max-w-none"
-        >
-          <div className="grid grid-cols-5 gap-4">
-            <div
-              aria-hidden="true"
-              className="col-span-3 aspect-[3/4] rounded-card bg-gradient-to-b from-accent/70 to-accent/30 shadow-card"
-            />
-            <div
-              aria-hidden="true"
-              className="col-span-2 mt-12 aspect-[3/4] rounded-card bg-gradient-to-b from-primary to-primary-hover shadow-card"
-            />
-          </div>
-          {c.badgeValue && (
-            <Card className="absolute -bottom-5 start-6 p-4">
-              <p className="font-heading text-h3 font-bold text-ink">
-                {c.badgeValue}
-              </p>
-              <p className="text-sm text-muted">{c.badgeLabel}</p>
-            </Card>
-          )}
-        </Reveal>
-
-        <Reveal anim={staggerChild(anim, 1)} className="order-1 lg:order-2">
-          {c.eyebrow && <Badge>{c.eyebrow}</Badge>}
-          <h2 className="mt-3 text-h2 text-ink">{c.title}</h2>
-          {c.text && <p className="mt-5 text-lead text-muted">{c.text}</p>}
-
-          {c.points.length > 0 && (
-            <ul className="mt-8 space-y-4">
-              {c.points.map((p, i) => (
-                <li key={i} className="flex items-start gap-3" style={staggerStyle(i)}>
-                  <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                    <IconCheck className="size-3.5" />
-                  </span>
-                  <span className="text-ink">{p}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-
-          {c.ctaLabel && (
-            <div className="mt-9">
-              <Button variant="outline" href={c.ctaHref}>
-                {c.ctaLabel}
-              </Button>
+        <ExperienceTarget id="about-visual" className="relative order-2 mx-auto w-full max-w-md lg:order-1 lg:max-w-none">
+          <Reveal anim={staggerChild(anim, 0)}>
+            <div className="grid grid-cols-5 gap-4">
+              <div
+                aria-hidden="true"
+                className="col-span-3 aspect-[3/4] rounded-card bg-gradient-to-b from-accent/70 to-accent/30 shadow-card"
+              />
+              <div
+                aria-hidden="true"
+                className="col-span-2 mt-12 aspect-[3/4] rounded-card bg-gradient-to-b from-primary to-primary-hover shadow-card"
+              />
             </div>
+          </Reveal>
+          {c.badgeValue && (
+            <ExperienceTarget id="about-badge" className="absolute -bottom-5 start-6">
+              <Card className="p-4">
+                <p className="font-heading text-h3 font-bold text-ink">
+                  {c.badgeValue}
+                </p>
+                <p className="text-sm text-muted">{c.badgeLabel}</p>
+              </Card>
+            </ExperienceTarget>
           )}
-        </Reveal>
+        </ExperienceTarget>
+
+        <ExperienceTarget id="about-content" as="div" className="order-1 lg:order-2">
+          <Reveal anim={staggerChild(anim, 1)}>
+            {c.eyebrow && <Badge>{c.eyebrow}</Badge>}
+            <h2 className="mt-3 text-h2 text-ink">{c.title}</h2>
+            {c.text && <p className="mt-5 text-lead text-muted">{c.text}</p>}
+
+            {c.points.length > 0 && (
+              <ul className="mt-8 space-y-4">
+                {c.points.map((p, i) => (
+                  <li key={i} className="flex items-start gap-3" style={staggerStyle(i)}>
+                    <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                      <IconCheck className="size-3.5" />
+                    </span>
+                    <span className="text-ink">{p}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {c.ctaLabel && (
+              <ExperienceTarget id="about-cta" as="div" className="mt-9">
+                <Button variant="outline" href={c.ctaHref}>
+                  {c.ctaLabel}
+                </Button>
+              </ExperienceTarget>
+            )}
+          </Reveal>
+        </ExperienceTarget>
       </div>
     </Section>
   );

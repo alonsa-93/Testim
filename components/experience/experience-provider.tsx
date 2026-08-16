@@ -69,8 +69,16 @@ export function ExperienceProvider({
 
   return (
     <ExperienceContext.Provider value={{ runtime, mode }}>
-      {/* display:contents -- עוגן DOM טהור ל-findScrollRoot, לא משפיע על layout בכלל */}
-      <div ref={rootRef} style={{ display: "contents" }}>
+      {/*
+        display:contents -- עוגן DOM טהור ל-findScrollRoot, לא משפיע על layout בכלל.
+        data-experience-active (רק כש-enabled && !reducedMotion, בדיוק כמו תנאי
+        ה-attach למעלה): globals.css סוגר תחתיו את כל ה-CSS של .exp-motion.
+        חיוני, לא רק קוסמטי -- translate (אפילו "0% 0%") יוצר containing block
+        חדש ל-position:absolute תחתיו, מה שהיה שובר overlay-ים קיימים (כמו
+        הציטוט/התג הצפים ב-Hero) על כל דף רגיל בלי Experience בכלל. כשה-flag
+        כבוי, ל-.exp-motion אין שום כלל CSS פעיל -- אינרטי לגמרי (Phase 5).
+      */}
+      <div ref={rootRef} data-experience-active={enabled && !reducedMotion ? "" : undefined} style={{ display: "contents" }}>
         {children}
       </div>
     </ExperienceContext.Provider>

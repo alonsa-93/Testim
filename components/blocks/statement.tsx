@@ -7,6 +7,7 @@ import { statementDefaults, type StatementContent } from "./statement.meta";
 import type { BlockContent } from "@/lib/fields";
 import { useReducedMotion } from "@/components/fx/use-reduced-motion";
 import { findScrollRoot, measureRelativeToRoot } from "@/lib/scroll-root";
+import { ExperienceTarget } from "@/components/experience/experience-target";
 
 /**
  * בלוק "הצהרה": סקשן sticky גבוה שבו פסקה גדולה נדלקת מילה-מילה לפי
@@ -75,23 +76,25 @@ export function Statement({ content }: { content: BlockContent }) {
     <section ref={wrapRef} className="relative min-h-[240svh]">
       <div className="sticky top-0 flex min-h-svh items-center">
         <Container>
-          <p
-            role="text"
-            aria-label={c.text.replace(/\*\*/g, "")}
-            className="mx-auto max-w-4xl text-center font-heading text-h1 leading-snug text-ink"
-            style={{ "--n": words.length } as CSSProperties}
-          >
-            {words.map((w, i) => (
-              <span
-                key={i}
-                aria-hidden="true"
-                className={`fx-statement-word${w.emphasis ? " text-accent" : ""}`}
-                style={{ "--i": i } as CSSProperties}
-              >
-                {w.text}{" "}
-              </span>
-            ))}
-          </p>
+          <ExperienceTarget id="statement-text" as="div">
+            <p
+              role="text"
+              aria-label={c.text.replace(/\*\*/g, "")}
+              className="mx-auto max-w-4xl text-center font-heading text-h1 leading-snug text-ink"
+              style={{ "--n": words.length } as CSSProperties}
+            >
+              {words.map((w, i) => (
+                <span
+                  key={i}
+                  aria-hidden="true"
+                  className={`fx-statement-word${w.emphasis ? " text-accent" : ""}`}
+                  style={{ "--i": i } as CSSProperties}
+                >
+                  {w.text}{" "}
+                </span>
+              ))}
+            </p>
+          </ExperienceTarget>
         </Container>
       </div>
     </section>

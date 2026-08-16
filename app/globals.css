@@ -539,8 +539,18 @@
  * reduced-motion: אין כלל @media כאן במכוון — ה-Provider (Phase 2)
  * פשוט לא מפעיל את ה-runtime תחת reduced-motion, כך שהמשתנים תמיד
  * נשארים בברירת המחדל הנייטרלית למטה. אותה פילוסופיה כמו statement.tsx.
+ *
+ * [data-experience-active] היא לא תוספת קוסמטית — היא **חובה מבחינת
+ * נכונות** (Phase 5, נמצא תוך כדי חיווט בלוקים קיימים): translate עם
+ * כל ערך שאינו "none" (כולל "0% 0%"!) יוצר containing block חדש
+ * ל-position:absolute תחתיו. בלי ה-gate הזה, כל ExperienceTarget
+ * (גם על דף Standard רגיל לגמרי בלי Experience) היה שובר overlay-ים
+ * absolute קיימים שנשענים על אב רחוק יותר (למשל הציטוט/התג הצפים
+ * בבלוק Hero). ה-Provider כותב את ה-attribute הזה רק כש-Experience
+ * פעיל בפועל (enabled && !reducedMotion) — כך שעל כל דף שאינו
+ * Experience-driven, .exp-motion אינרטי ב-100%, אפס כלל CSS פעיל.
  */
-.exp-motion {
+[data-experience-active] .exp-motion {
   translate: var(--exp-x, 0%) var(--exp-y, 0%);
   scale: var(--exp-scale, 1);
   rotate: var(--exp-rotate, 0deg);

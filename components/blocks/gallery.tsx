@@ -1,6 +1,7 @@
 import { Section, SectionHeading } from "@/components/ui/section";
 import { Reveal } from "@/components/fx/reveal";
 import { TiltCard } from "@/components/fx/tilt-card";
+import { ExperienceTarget } from "@/components/experience/experience-target";
 import { ANIM_FIELDS, resolveBlockAnim, staggerChild } from "@/lib/effects";
 import { cn } from "@/lib/cn";
 import type { BlockDef } from "@/lib/blocks";
@@ -73,16 +74,18 @@ function Gallery({
           );
           return (
             <li key={i}>
-              <Reveal anim={staggerChild(anim, i)}>
-                <figure>
-                  {tilt ? <TiltCard className="rounded-card">{frame}</TiltCard> : frame}
-                  {item.caption && (
-                    <figcaption className="mt-3 text-sm font-medium text-muted">
-                      {item.caption}
-                    </figcaption>
-                  )}
-                </figure>
-              </Reveal>
+              <ExperienceTarget id={`gallery-item-${i + 1}`} as="div">
+                <Reveal anim={staggerChild(anim, i)}>
+                  <figure>
+                    {tilt ? <TiltCard className="rounded-card">{frame}</TiltCard> : frame}
+                    {item.caption && (
+                      <figcaption className="mt-3 text-sm font-medium text-muted">
+                        {item.caption}
+                      </figcaption>
+                    )}
+                  </figure>
+                </Reveal>
+              </ExperienceTarget>
             </li>
           );
         })}

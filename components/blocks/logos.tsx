@@ -1,5 +1,6 @@
 import { Container } from "@/components/ui/section";
 import { Reveal } from "@/components/fx/reveal";
+import { ExperienceTarget } from "@/components/experience/experience-target";
 import { ANIM_FIELDS, resolveBlockAnim, staggerChild, staggerStyle } from "@/lib/effects";
 import type { BlockDef } from "@/lib/blocks";
 import type { BlockContent } from "@/lib/fields";
@@ -43,13 +44,15 @@ function Logos({
           {c.items.map((name, i) => (
             // ה-Reveal מקנן div בתוך ה-li (לא הפוך) כדי לשמור על ul>li תקין
             <li key={i}>
-              <Reveal
-                anim={staggerChild(anim, i)}
-                style={staggerStyle(i)}
-                className="font-heading text-xl font-bold text-muted/80"
-              >
-                {name}
-              </Reveal>
+              <ExperienceTarget id={`logos-item-${i + 1}`} as="div">
+                <Reveal
+                  anim={staggerChild(anim, i)}
+                  style={staggerStyle(i)}
+                  className="font-heading text-xl font-bold text-muted/80"
+                >
+                  {name}
+                </Reveal>
+              </ExperienceTarget>
             </li>
           ))}
         </ul>

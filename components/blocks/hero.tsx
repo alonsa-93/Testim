@@ -8,6 +8,7 @@ import { SplitWords } from "@/components/fx/split-words";
 import { SpotlightGroup } from "@/components/fx/spotlight-group";
 import { TiltCard } from "@/components/fx/tilt-card";
 import { CountUp } from "@/components/fx/count-up";
+import { ExperienceTarget } from "@/components/experience/experience-target";
 import { ANIM_FIELDS, resolveBlockAnim, staggerChild, staggerStyle } from "@/lib/effects";
 import { cn } from "@/lib/cn";
 import type { BlockDef } from "@/lib/blocks";
@@ -97,89 +98,107 @@ function Hero({
       <Container className="grid items-center gap-14 py-section lg:grid-cols-2">
         <div>
           {c.eyebrow && (
-            <Reveal anim={staggerChild(anim, 0)}>
-              <Badge>{c.eyebrow}</Badge>
-            </Reveal>
+            <ExperienceTarget id="hero-eyebrow">
+              <Reveal anim={staggerChild(anim, 0)}>
+                <Badge>{c.eyebrow}</Badge>
+              </Reveal>
+            </ExperienceTarget>
           )}
-          <Reveal anim={headingAnim} className="mt-5">
-            <h1 className="text-display text-ink">
-              <SplitWords text={c.title} />
-            </h1>
-          </Reveal>
-          {c.subtitle && (
-            <Reveal anim={staggerChild(anim, 2)}>
-              <p className="mt-6 max-w-xl text-lead text-muted">{c.subtitle}</p>
+          <ExperienceTarget id="hero-title">
+            <Reveal anim={headingAnim} className="mt-5">
+              <h1 className="text-display text-ink">
+                <SplitWords text={c.title} />
+              </h1>
             </Reveal>
+          </ExperienceTarget>
+          {c.subtitle && (
+            <ExperienceTarget id="hero-subtitle">
+              <Reveal anim={staggerChild(anim, 2)}>
+                <p className="mt-6 max-w-xl text-lead text-muted">{c.subtitle}</p>
+              </Reveal>
+            </ExperienceTarget>
           )}
 
           <Reveal anim={staggerChild(anim, 3)}>
             <div className="mt-9 flex flex-wrap items-center gap-4">
               {c.primaryCta && (
-                <span
-                  className={cn("inline-flex rounded-btn", c.fx === "halo" && "fx-halo")}
-                >
-                  <Button size="lg" href={c.primaryHref}>
-                    {c.primaryCta}
-                  </Button>
-                </span>
+                <ExperienceTarget id="hero-cta-primary" as="span">
+                  <span
+                    className={cn("inline-flex rounded-btn", c.fx === "halo" && "fx-halo")}
+                  >
+                    <Button size="lg" href={c.primaryHref}>
+                      {c.primaryCta}
+                    </Button>
+                  </span>
+                </ExperienceTarget>
               )}
               {c.secondaryCta && (
-                <Button size="lg" variant="outline" href={c.secondaryHref}>
-                  {c.secondaryCta}
-                </Button>
+                <ExperienceTarget id="hero-cta-secondary" as="span">
+                  <Button size="lg" variant="outline" href={c.secondaryHref}>
+                    {c.secondaryCta}
+                  </Button>
+                </ExperienceTarget>
               )}
             </div>
           </Reveal>
 
           {c.stats.length > 0 && (
-            <Reveal anim={staggerChild(anim, 4)}>
-              <dl className="mt-12 grid grid-cols-3 gap-6 border-t border-line pt-8">
-                {c.stats.map((s, i) => (
-                  <div key={i} className="border-s-2 border-accent ps-4" style={staggerStyle(i)}>
-                    <dt className="order-2 text-sm text-muted">{s.label}</dt>
-                    <dd className="font-heading text-h3 font-bold text-ink">
-                      <CountUp value={s.value} />
-                    </dd>
-                  </div>
-                ))}
-              </dl>
-            </Reveal>
+            <ExperienceTarget id="hero-stats">
+              <Reveal anim={staggerChild(anim, 4)}>
+                <dl className="mt-12 grid grid-cols-3 gap-6 border-t border-line pt-8">
+                  {c.stats.map((s, i) => (
+                    <div key={i} className="border-s-2 border-accent ps-4" style={staggerStyle(i)}>
+                      <dt className="order-2 text-sm text-muted">{s.label}</dt>
+                      <dd className="font-heading text-h3 font-bold text-ink">
+                        <CountUp value={s.value} />
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              </Reveal>
+            </ExperienceTarget>
           )}
         </div>
 
         {/* קומפוזיציה ויזואלית דקורטיבית — מחליפה תמונת הירו */}
-        <Reveal anim={staggerChild(anim, 1)} className="relative mx-auto w-full max-w-md lg:max-w-none">
-          {c.fx === "spotlight" ? (
-            <SpotlightGroup>
-              {c.mockupTilt ? <TiltCard className="rounded-card">{visual}</TiltCard> : visual}
-            </SpotlightGroup>
-          ) : c.mockupTilt ? (
-            <TiltCard className="rounded-card">{visual}</TiltCard>
-          ) : (
-            visual
-          )}
+        <ExperienceTarget id="hero-visual" className="relative mx-auto w-full max-w-md lg:max-w-none">
+          <Reveal anim={staggerChild(anim, 1)}>
+            {c.fx === "spotlight" ? (
+              <SpotlightGroup>
+                {c.mockupTilt ? <TiltCard className="rounded-card">{visual}</TiltCard> : visual}
+              </SpotlightGroup>
+            ) : c.mockupTilt ? (
+              <TiltCard className="rounded-card">{visual}</TiltCard>
+            ) : (
+              visual
+            )}
+          </Reveal>
 
           {c.quote && (
-            <Card className="absolute -bottom-6 -start-4 w-64 p-4 md:-start-8">
-              <div className="flex gap-1 text-accent" aria-hidden="true">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <IconStar key={i} className="size-4" />
-                ))}
-              </div>
-              <p className="mt-2 text-sm text-ink">״{c.quote}״</p>
-              <p className="mt-1.5 text-xs font-semibold text-muted">
-                {c.quoteAuthor}
-              </p>
-            </Card>
+            <ExperienceTarget id="hero-quote" className="absolute -bottom-6 -start-4 w-64 md:-start-8">
+              <Card className="p-4">
+                <div className="flex gap-1 text-accent" aria-hidden="true">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <IconStar key={i} className="size-4" />
+                  ))}
+                </div>
+                <p className="mt-2 text-sm text-ink">״{c.quote}״</p>
+                <p className="mt-1.5 text-xs font-semibold text-muted">
+                  {c.quoteAuthor}
+                </p>
+              </Card>
+            </ExperienceTarget>
           )}
 
           {c.badge && (
-            <Card className="absolute -top-4 end-2 flex items-center gap-2.5 p-3 md:-end-4">
-              <IconShield className="size-5 text-primary" />
-              <span className="text-sm font-semibold text-ink">{c.badge}</span>
-            </Card>
+            <ExperienceTarget id="hero-badge" className="absolute -top-4 end-2 md:-end-4">
+              <Card className="flex items-center gap-2.5 p-3">
+                <IconShield className="size-5 text-primary" />
+                <span className="text-sm font-semibold text-ink">{c.badge}</span>
+              </Card>
+            </ExperienceTarget>
           )}
-        </Reveal>
+        </ExperienceTarget>
       </Container>
     </div>
   );
