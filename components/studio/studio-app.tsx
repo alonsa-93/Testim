@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
 import { themes, getDefaultTheme } from "@/themes";
 import { pages, getDefaultPage } from "@/pages-data";
@@ -115,6 +115,45 @@ export function StudioApp() {
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // תצוגה מקדימה מקומית לתמונה בחוויית הגלילה: מפת layerId -> blob URL
+  // זמני מקובץ שנבחר מהמחשב. במתכוון *לא* חלק מ-page — לעולם לא נכתב
+  // ל-localStorage או לייצוא הדף (§ בקשת המשתמש: "לתצוגה בלבד, לא נשמר").
+  // זורם רק לתצוגה החיה דרך ExperienceLivePreview/ExperienceLayerRenderer.
+  const [imagePreviewOverrides, setImagePreviewOverridesState] = useState<Record<string, string>>({});
+  const imagePreviewOverridesRef = useRef(imagePreviewOverrides);
+  useEffect(() => {
+    imagePreviewOverridesRef.current = imagePreviewOverrides;
+  }, [imagePreviewOverrides]);
+
+  const setImagePreview = useCallback((layerId: string, url: string | null) => {
+    setImagePreviewOverridesState((prev) => {
+      const old = prev[layerId];
+      if (old) URL.revokeObjectURL(old);
+      if (url === null) {
+        if (!(layerId in prev)) return prev;
+        const next = { ...prev };
+        delete next[layerId];
+        return next;
+      }
+      return { ...prev, [layerId]: url };
+    });
+  }, []);
+
+  const clearAllImagePreviews = useCallback(() => {
+    setImagePreviewOverridesState((prev) => {
+      Object.values(prev).forEach((u) => URL.revokeObjectURL(u));
+      return {};
+    });
+  }, []);
+
+  // ניקוי כל ה-blob URLs שנותרו כשעוזבים את הסטודיו (לא רק ברענון —
+  // רענון כבר הורג אותם לבד, זה מכסה ניווט SPA בתוך האפליקציה)
+  useEffect(() => {
+    return () => {
+      Object.values(imagePreviewOverridesRef.current).forEach((u) => URL.revokeObjectURL(u));
+    };
+  }, []);
+
   // שמירה אוטומטית של הטיוטות
   useEffect(() => {
     try {
@@ -207,6 +246,7 @@ export function StudioApp() {
     setSelectedBlockId(null);
     setSelectedSceneId(null);
     setSelectedLayerId(null);
+    clearAllImagePreviews();
     const pageTheme = themes.find((t) => t.id === source.themeId);
     if (pageTheme) {
       setBaseId(pageTheme.id);
@@ -220,6 +260,7 @@ export function StudioApp() {
     setSelectedBlockId(null);
     setSelectedSceneId(null);
     setSelectedLayerId(null);
+    clearAllImagePreviews();
   }
 
   /** מתג מצב העמוד (§1 במסמך התיקון הסופי): לא מוחק נתוני Experience
@@ -300,6 +341,7 @@ export function StudioApp() {
         setSelectedBlockId(null);
         setSelectedSceneId(null);
         setSelectedLayerId(null);
+        clearAllImagePreviews();
         flash("ok", `הדף "${parsed.name}" נטען`);
         return;
       }
@@ -535,6 +577,8 @@ export function StudioApp() {
                 onSelectScene={setSelectedSceneId}
                 selectedLayerId={selectedLayerId}
                 onSelectLayer={setSelectedLayerId}
+                imagePreviewOverrides={imagePreviewOverrides}
+                onSetImagePreview={setImagePreview}
               />
             </div>
           ) : (
@@ -1073,6 +1117,7 @@ export function StudioApp() {
                       selectedSceneId={selectedSceneId}
                       onSelectScene={setSelectedSceneId}
                       mode={viewport === "desktop" ? "base" : viewport}
+                      imagePreviewOverrides={imagePreviewOverrides}
                     />
                   ) : (
                     <p className="p-20 text-center text-muted">

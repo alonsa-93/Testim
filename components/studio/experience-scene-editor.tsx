@@ -49,6 +49,8 @@ export function ExperienceSceneEditor({
   selectedLayerId,
   onSelectLayer,
   issues,
+  imagePreviewOverrides,
+  onSetImagePreview,
 }: {
   scene: ExperienceScene;
   settings: ExperienceSettings;
@@ -57,6 +59,9 @@ export function ExperienceSceneEditor({
   selectedLayerId: string | null;
   onSelectLayer: (id: string | null) => void;
   issues: ExperienceValidationIssue[];
+  /** תצוגה מקדימה מקומית לתמונה, לפי layerId (ראו experience-layer-inspector.tsx) */
+  imagePreviewOverrides?: Record<string, string>;
+  onSetImagePreview?: (layerId: string, url: string | null) => void;
 }) {
   const [picking, setPicking] = useState(false);
   const [pickingBlock, setPickingBlock] = useState(false);
@@ -84,6 +89,7 @@ export function ExperienceSceneEditor({
     if (!window.confirm(`למחוק את השכבה "${layer?.id ?? id}"?`)) return;
     setLayers(scene.layers.filter((l) => l.id !== id));
     if (selectedLayerId === id) onSelectLayer(null);
+    onSetImagePreview?.(id, null);
   };
 
   const moveLayer = (from: number, to: number) => {
@@ -110,6 +116,8 @@ export function ExperienceSceneEditor({
         defaultEasing={settings.defaultEasing}
         onChange={onChange}
         onBack={() => onSelectLayer(null)}
+        imagePreviewSrc={imagePreviewOverrides?.[selectedLayer.id]}
+        onSetImagePreview={onSetImagePreview ? (url) => onSetImagePreview(selectedLayer.id, url) : undefined}
       />
     );
   }
