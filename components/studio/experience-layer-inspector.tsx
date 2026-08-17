@@ -61,12 +61,18 @@ export function ExperienceLayerInspector({
   defaultEasing,
   onChange,
   onBack,
+  imagePreviewSrc,
+  onSetImagePreview,
 }: {
   scene: ExperienceScene;
   layerId: string;
   defaultEasing: EasingId;
   onChange: (next: ExperienceScene) => void;
   onBack: () => void;
+  /** תצוגה מקדימה מקומית לתמונה שנבחרה מהמחשב עבור השכבה הזו (אם יש) */
+  imagePreviewSrc?: string;
+  /** url=null מנקה את התצוגה המקדימה. אף פעם לא נכתב ל-content.src עצמו. */
+  onSetImagePreview?: (url: string | null) => void;
 }) {
   const [tab, setTab] = useState<"basic" | "style" | "motion" | "advanced">("basic");
   const layer = scene.layers.find((l) => l.id === layerId);
@@ -117,7 +123,12 @@ export function ExperienceLayerInspector({
       {tab === "basic" && (
         <div className="space-y-6">
           <PanelSection title="תוכן">
-            <ContentFields layer={layer} onChange={setContent} />
+            <ContentFields
+              layer={layer}
+              onChange={setContent}
+              imagePreviewSrc={imagePreviewSrc}
+              onSetImagePreview={onSetImagePreview}
+            />
           </PanelSection>
           <PanelSection title="מיקום">
             <TextField label="מיקום אופקי (x)" dir="ltr" value={layout.x ?? ""} onChange={(v) => setLayout({ x: v || undefined })} hint='למשל "50%"' />
@@ -148,7 +159,17 @@ export function ExperienceLayerInspector({
   );
 }
 
-function ContentFields({ layer, onChange }: { layer: ExperienceLayer; onChange: (content: LayerContent) => void }) {
+function ContentFields({
+  layer,
+  onChange,
+  imagePreviewSrc,
+  onSetImagePreview,
+}: {
+  layer: ExperienceLayer;
+  onChange: (content: LayerContent) => void;
+  imagePreviewSrc?: string;
+  onSetImagePreview?: (url: string | null) => void;
+}) {
   switch (layer.type) {
     case "text": {
       const c = layer.content as Extract<LayerContent, { text: string; tag: string }>;
@@ -168,6 +189,7 @@ function ContentFields({ layer, onChange }: { layer: ExperienceLayer; onChange: 
       const c = layer.content as Extract<LayerContent, { src: string }>;
       return (
         <>
+          <ImagePreviewPicker previewSrc={imagePreviewSrc} onSetPreview={onSetImagePreview} />
           <TextField label="כתובת התמונה" dir="ltr" value={c.src} onChange={(v) => onChange({ ...c, src: v })} />
           <CheckboxField label="דקורטיבית (בלי alt, מוסתרת מקוראי מסך)" checked={!!c.decorative} onChange={(v) => onChange({ ...c, decorative: v })} />
           {!c.decorative && <TextField label="טקסט חלופי (alt)" value={c.alt} onChange={(v) => onChange({ ...c, alt: v })} />}
@@ -222,6 +244,59 @@ function ContentFields({ layer, onChange }: { layer: ExperienceLayer; onChange: 
       );
     }
   }
+}
+
+/**
+ * בחירת קובץ מהמחשב לתצוגה מקדימה בלבד: יוצר blob URL זמני (§ בקשת
+ * המשתמש — "שלא יישמר בפועל, רק לתצוגה"). לעולם לא נכתב ל-content.src
+ * -- זורם דרך imagePreviewOverrides (experience-layer.tsx) ישירות
+ * לתצוגה החיה של הסטודיו, ולכן לא נכנס ל-localStorage/ה-JSON המיוצא.
+ * נעלם אוטומטית ברענון (blob URL תלוי-מסמך) וגם באופן יזום עם "ניקוי".
+ */
+function ImagePreviewPicker({
+  previewSrc,
+  onSetPreview,
+}: {
+  previewSrc?: string;
+  onSetPreview?: (url: string | null) => void;
+}) {
+  if (!onSetPreview) return null;
+  return (
+    <div className="space-y-1.5 rounded-md border border-dashed border-indigo-300 bg-indigo-50/50 p-2.5">
+      <div className="flex items-center justify-between gap-2">
+        <label className="cursor-pointer text-xs font-bold text-indigo-700 hover:underline">
+          📁 בחירת תמונה מהמחשב (לתצוגה בלבד)
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) onSetPreview(URL.createObjectURL(file));
+              e.target.value = "";
+            }}
+          />
+        </label>
+        {previewSrc && (
+          <button
+            type="button"
+            onClick={() => onSetPreview(null)}
+            className="cursor-pointer text-xs font-semibold text-slate-500 hover:text-red-600"
+          >
+            ניקוי
+          </button>
+        )}
+      </div>
+      <p className="text-[11px] leading-relaxed text-indigo-600">
+        לתצוגה חיה בלבד — לא נשמר בדף, לא נכלל בייצוא ונעלם ברענון. כדי
+        שתמונה תישאר בדף בפועל, הזינו כתובת URL אמיתית למטה.
+      </p>
+      {previewSrc && (
+        // eslint-disable-next-line @next/next/no-img-element -- תמונת תצוגה מקדימה זמנית מ-blob URL, לא נכס אמיתי
+        <img src={previewSrc} alt="" className="h-16 w-full rounded object-cover" />
+      )}
+    </div>
+  );
 }
 
 function MotionTab({

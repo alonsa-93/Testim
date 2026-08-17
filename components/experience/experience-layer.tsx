@@ -31,11 +31,17 @@ export function ExperienceLayerRenderer({
   layer,
   blocks,
   theme,
+  imagePreviewOverrides,
 }: {
   layer: ExperienceLayerConfig;
   /** נדרש רק ל-layer.type === "block" -- הפניה לבלוקים הקיימים של הדף */
   blocks?: PageBlockInstance[];
   theme?: Theme;
+  /** Studio בלבד (§ תצוגה מקדימה מקומית לתמונה): מפת layerId -> blob URL
+   * זמני שנוצר מקובץ שנבחר במחשב, לתצוגה חיה בלבד -- לעולם לא נכתב
+   * ל-content.src עצמו, כך שלא נשמר ב-localStorage/בייצוא הדף. הדף
+   * הציבורי (experience-page.tsx) לא מעביר את הפרופ הזה בכלל. */
+  imagePreviewOverrides?: Record<string, string>;
 }) {
   const mode = useExperienceMode();
   if (layer.hidden) return null;
@@ -43,7 +49,7 @@ export function ExperienceLayerRenderer({
   const layout = resolveResponsive(layer.layout, mode);
   const style = layerLayoutStyle(layout) as CSSProperties;
 
-  const inner = renderLayerContent(layer, blocks, theme);
+  const inner = renderLayerContent(layer, blocks, theme, imagePreviewOverrides);
   if (inner === null) return null;
 
   return (
@@ -56,13 +62,17 @@ export function ExperienceLayerRenderer({
 function renderLayerContent(
   layer: ExperienceLayerConfig,
   blocks: PageBlockInstance[] | undefined,
-  theme: Theme | undefined
+  theme: Theme | undefined,
+  imagePreviewOverrides: Record<string, string> | undefined
 ) {
   switch (layer.type) {
     case "text":
       return <TextLayer content={layer.content as TextLayerContent} style={layer.style} />;
-    case "image":
-      return <ImageLayer content={layer.content as ImageLayerContent} />;
+    case "image": {
+      const content = layer.content as ImageLayerContent;
+      const previewSrc = imagePreviewOverrides?.[layer.id];
+      return <ImageLayer content={previewSrc ? { ...content, src: previewSrc } : content} />;
+    }
     case "shape":
       return <ShapeLayer content={layer.content as ShapeLayerContent} style={layer.style} />;
     case "button":

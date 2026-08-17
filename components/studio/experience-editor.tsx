@@ -47,6 +47,8 @@ export function ExperienceEditor({
   onSelectScene,
   selectedLayerId,
   onSelectLayer,
+  imagePreviewOverrides,
+  onSetImagePreview,
 }: {
   config: ExperienceConfig | undefined;
   onChange: (next: PageUpdater<ExperienceConfig>) => void;
@@ -54,6 +56,9 @@ export function ExperienceEditor({
   onSelectScene: (id: string | null) => void;
   selectedLayerId: string | null;
   onSelectLayer: (id: string | null) => void;
+  /** תצוגה מקדימה מקומית לתמונה, לפי layerId — ראו experience-layer-inspector.tsx */
+  imagePreviewOverrides?: Record<string, string>;
+  onSetImagePreview?: (layerId: string, url: string | null) => void;
 }) {
   const [pickingPreset, setPickingPreset] = useState(false);
 
@@ -125,6 +130,7 @@ export function ExperienceEditor({
       onSelectScene(null);
       onSelectLayer(null);
     }
+    scene?.layers.forEach((l) => onSetImagePreview?.(l.id, null));
   };
 
   const moveScene = (from: number, to: number) => {
@@ -153,6 +159,8 @@ export function ExperienceEditor({
         selectedLayerId={selectedLayerId}
         onSelectLayer={onSelectLayer}
         issues={issues.filter((i) => i.sceneId === selectedScene.id)}
+        imagePreviewOverrides={imagePreviewOverrides}
+        onSetImagePreview={onSetImagePreview}
       />
     );
   }

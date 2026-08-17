@@ -25,6 +25,7 @@ export function ExperienceLivePreview({
   selectedSceneId,
   onSelectScene,
   mode = "base",
+  imagePreviewOverrides,
 }: {
   page: Page;
   theme?: Theme;
@@ -34,6 +35,9 @@ export function ExperienceLivePreview({
    * Responsive<T> של layout/durationVh/tracks לאותו breakpoint שנבחר
    * למעלה, בדיוק כמו שה-max-width של התצוגה כבר עושה ל-Standard. */
   mode?: ResponsiveMode;
+  /** תצוגה מקדימה מקומית לתמונה שנבחרה מהמחשב — לא חלק מ-page, ראו
+   * experience-layer.tsx */
+  imagePreviewOverrides?: Record<string, string>;
 }) {
   const config = page.experience;
   if (!config?.enabled) return null;
@@ -48,7 +52,13 @@ export function ExperienceLivePreview({
           className={selectedSceneId === scene.id ? "outline outline-2 outline-indigo-500 -outline-offset-2" : undefined}
         >
           {scene.layers.map((layer) => (
-            <ExperienceLayerRenderer key={layer.id} layer={layer} blocks={page.blocks} theme={theme} />
+            <ExperienceLayerRenderer
+              key={layer.id}
+              layer={layer}
+              blocks={page.blocks}
+              theme={theme}
+              imagePreviewOverrides={imagePreviewOverrides}
+            />
           ))}
           {scene.blockRefs?.map((blockId) => (
             <ExperienceBlockRefLayer key={blockId} blockId={blockId} blocks={page.blocks} theme={theme} />
