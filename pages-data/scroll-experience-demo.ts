@@ -413,7 +413,11 @@ const multiLayerScene: ExperienceScene = {
         // x לא נצרך בכלל בנתיב הזה, השארתו הייתה קוד מת מטעה.
         mobile: { mode: "stage", y: "32%", width: "min(82vw, 20rem)", anchor: "center", zIndex: "content" },
       },
-      style: { color: "background" },
+      // Milestone H (ביקורת מבקר-אדברסריאלי, ממצא #17): היה "background"
+      // בטעות -- אותו טוקן בדיוק כמו רקע הסצנה (surface, קרוב-מאוד ל-bg
+      // בכהות), כך שהכותרת התמזגה כמעט לגמרי לתוך הרקע שלה (יחס ניגודיות
+      // ~1.4:1, נכשל WCAG). "text" הוא הטוקן הסמנטי הנכון לטקסט קריא.
+      style: { color: "text" },
     },
     {
       id: "demo-multi-stat",

@@ -71,6 +71,11 @@ export function ExperienceLayerRenderer({
     <ExperienceTarget
       id={layer.id}
       style={style}
+      // Milestone H (ביקורת מבקר-אדברסריאלי, ממצא #3): layer מסוג "block"
+      // מרנדר בלוק קיים שעשוי לשאת Reveal פנימי משלו -- managed כאן
+      // (יחד עם RevealManaged ב-BlockLayer) אוכף את אותה טבלת תקדימות
+      // בדיוק שכבר חלה על scene.blockRefs (ExperienceBlockRefLayer).
+      managed={layer.type === "block"}
       selected={selected}
       onSelect={onSelect}
       label={onSelect ? `${LAYER_TYPE_LABELS[layer.type]} — ${layer.id}` : undefined}

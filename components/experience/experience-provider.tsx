@@ -85,7 +85,14 @@ export function ExperienceProvider({
     const scrollRoot = findScrollRoot(anchor);
     runtime.attach(scrollRoot);
     return () => runtime.detach();
-  }, [runtime, enabled, reducedMotion, resolvedMode]);
+    // Milestone H (ביקורת מבקר-אדברסריאלי, ממצא #5): resolvedMode לא ברשימת
+    // התלויות בכוונה -- runtime.updateMode(resolvedMode) כבר רץ סינכרונית
+    // בגוף ה-render למעלה (שורה 71), *לפני* שה-effect הזה בכלל מופעל, כך
+    // שה-runtime תמיד עדכני בלי קשר אם ה-effect רץ מחדש. הכללתו בעבר גרמה
+    // לכל מעבר breakpoint (resize/orientation) לפרק לגמרי את מאזין הגלילה,
+    // לבטל rAF ממתין, ולעבור מחדש על ה-DOM דרך findScrollRoot -- עלות אמיתית
+    // בלי שום תועלת, ברכיב שכל הרעיון שלו הוא "rAF-driven, אפס עבודה מיותרת".
+  }, [runtime, enabled, reducedMotion]);
 
   return (
     <ExperienceContext.Provider value={{ runtime, mode: resolvedMode, debug: Boolean(config?.settings.debug) }}>

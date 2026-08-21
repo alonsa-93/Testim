@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ExperienceProvider, useExperienceRuntime } from "@/components/experience/experience-provider";
 import { ExperienceScene } from "@/components/experience/experience-scene";
 import { ExperienceLayerRenderer } from "@/components/experience/experience-layer";
@@ -46,10 +46,20 @@ export function ExperienceLivePreview({
   imagePreviewOverrides?: Record<string, string>;
 }) {
   const config = page.experience;
+  const missingScrollRoom = useMissingScrollRoom(config?.enabled ? config.scenes.length : 0);
   if (!config?.enabled) return null;
 
   return (
     <ExperienceProvider config={config} mode={mode}>
+      {/*
+        Milestone H (ביקורת מבקר-אדברסריאלי, ממצא #22 -- preset "עיתונאי"
+        "תקוע" בסטודיו): ראו useMissingScrollRoom למטה להסבר המלא. spacer
+        *לפני* הסצנות -- בלעדיו אין "מרחב ריצה" לדמות התקדמות מ-progress
+        נמוך (הסצנה הקצרה כבר "כמעט הגיעה לראש" מהרגע הראשון, בלי גלילה
+        בכלל, כי אין שום דבר לפניה בסטודיו). extra===0 (המקרה הרגיל, יש
+        כבר מספיק תוכן) -- לא מרנדר כלום, בלי שינוי חזותי כלשהו.
+      */}
+      {missingScrollRoom > 0 && <div aria-hidden="true" style={{ height: missingScrollRoom }} />}
       {config.scenes.map((scene) => (
         <ExperienceScene
           key={scene.id}
@@ -91,6 +101,7 @@ export function ExperienceLivePreview({
           )}
         </ExperienceScene>
       ))}
+      {missingScrollRoom > 0 && <div aria-hidden="true" style={{ height: missingScrollRoom }} />}
       {/* הטיימליין חייב להיות *אחרי* הסצנות ב-DOM: sticky bottom-0 נדבק
           לתחתית ה-scrollport רק כל עוד המיקום הטבעי של האלמנט נמוך מהחלון —
           כאלמנט ראשון הוא פשוט נגלל החוצה למעלה (ממצא ה-walkthrough:
@@ -104,6 +115,67 @@ export function ExperienceLivePreview({
       />
     </ExperienceProvider>
   );
+}
+
+/**
+ * Milestone H (ביקורת מבקר-אדברסריאלי, ממצא #22 -- preset "עיתונאי" "תקוע"):
+ * סצנת flow (composition:"flow", בלי pin) לא מקבלת גובה כפוי בכלל
+ * (experience-scene.tsx, "בלי pin, בלי גובה כפוי") -- ה-DOM שלה רוכב
+ * על הגובה הטבעי של התוכן (למשל כותרת בודדת, יכול להיות עשרות פיקסלים
+ * בלבד). כש-flow scene כזו היא היחידה בדף (בדיוק המצב מיד אחרי בחירת
+ * preset מה-empty-state), *שני* הכיוונים שבורים בבת אחת:
+ * 1) אין שום דבר *לפניה* בדף -- כבר במעבר ה-render הראשון (scrollTop=0,
+ *    בלי שום גלילה) ה-top הטבעי שלה קרוב מאוד ל-0 (=כמעט "הגיעה לראש"),
+ *    כך שprogress הטבעי כבר ~0.93 בלי לגלול בכלל -- אין "מרחב ריצה"
+ *    לדמות entrance מ-progress נמוך: scrollToProgress היה צריך לגלול
+ *    ל-scrollTop *שלילי* (בלתי אפשרי, נקטע ל-0).
+ * 2) אורך הגלילה הכולל של <main overflow-auto> קטן-או-שווה לגובה
+ *    ה-viewport שלו (scrollHeight<=clientHeight, אומת אמפירית: 835===835
+ *    בדיוק) -- אין גם מרחב *אחרי* להשלים עד progress=1.
+ * שני הפערים יחד -> ה-scrubber (0 עד 100) לא זז בכלל, נשאר תקוע.
+ *
+ * התיקון: מודדים בפועל (לא מניחים) אם יש מספיק מסלול גלילה, ורק אם
+ * אין -- מוסיפים spacer שקוף בגובה viewport אחד *משני צידי* הסצנות
+ * (המקסימום שהנוסחה ההפוכה ב-scrollToProgress יכולה לדרוש בכל כיוון,
+ * ראו שם). *לא* מוסיף כלום (missingScrollRoom=0, אין DOM element בכלל)
+ * כשכבר יש תוכן/סצנות מספיקות -- בדיוק המצב הנפוץ (כמה סצנות
+ * stage/pinned עם durationVh אמיתי) -- אז אין "זנב גלילה מת" חדש בקצה
+ * תצוגות רגילות, רק בגומה הצרה-במיוחד הזו. sceneCount (לא ResizeObserver
+ * על ה-root עצמו) הוא ה-dependency בכוונה: observer שמאזין לגודל
+ * הקונטיינר היה נכנס ללולאה אינסופית (הוספת ה-spacers עצמם משנה
+ * scrollHeight -> מפעילה מדידה מחדש -> מסירה אותם -> חוזר חלילה).
+ * extraRef מחסר את מה שכבר הוספנו בעצמנו (פעמיים -- לפני ואחרי) מהמדידה,
+ * כך שהחלטה חדשה (למשל אחרי שהמשתמש הוסיף עוד סצנה) לא "רואה" את
+ * ה-spacers הישנים שלה כאילו הם תוכן אמיתי.
+ */
+function useMissingScrollRoom(sceneCount: number): number {
+  const [extra, setExtra] = useState(0);
+  const extraRef = useRef(0);
+
+  useLayoutEffect(() => {
+    // כמו read() ב-TimelineOverlay למטה: setState דרך פונקציה מקומית
+    // בשם, לא ישירות בגוף ה-effect (react-hooks/set-state-in-effect).
+    const measure = () => {
+      const anyScene = document.querySelector("[data-experience-scene]");
+      if (!(anyScene instanceof HTMLElement)) {
+        extraRef.current = 0;
+        setExtra(0);
+        return;
+      }
+      const root = findScrollRoot(anyScene);
+      const el = root.getElement();
+      const viewportSize = root.getViewportSize();
+      const rawScrollHeight =
+        (el instanceof HTMLElement ? el.scrollHeight : document.documentElement.scrollHeight) - 2 * extraRef.current;
+      const clientHeight = el instanceof HTMLElement ? el.clientHeight : viewportSize;
+      const next = rawScrollHeight <= clientHeight ? viewportSize : 0;
+      extraRef.current = next;
+      setExtra(next);
+    };
+    measure();
+  }, [sceneCount]);
+
+  return extra;
 }
 
 function TimelineOverlay({

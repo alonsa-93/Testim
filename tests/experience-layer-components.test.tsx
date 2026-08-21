@@ -156,10 +156,33 @@ describe("Block Reference layer", () => {
   it("renders nothing when no blocks list is provided at all", () => {
     expect(() => renderLayer(layer({ type: "block", content: { blockId: "x" } }))).not.toThrow();
   });
+
+  /**
+   * Milestone H (ביקורת מבקר-אדברסריאלי, ממצא #3): layer מסוג "block"
+   * היה נקודת הכניסה השנייה, הלא-מאובטחת, ל"הכנס בלוק קיים ל-Experience"
+   * -- ללא ה-managed wrapping ש-scene.blockRefs (ExperienceBlockRefLayer)
+   * כבר אוכף. אם למחבר יש גם Track על אותו layer id וגם Reveal פנימי
+   * בתוך הבלוק, שתי המערכות היו "נלחמות" על אותו אלמנט.
+   */
+  it("carries data-experience-managed on its wrapper, exactly like scene.blockRefs (Milestone H fix)", () => {
+    const blocks: PageBlockInstance[] = [{ id: "cta-1", type: "cta", content: { title: "כותרת CTA" } }];
+    const { container } = renderLayer(
+      layer({ id: "l1", type: "block", content: { blockId: "cta-1" }, layout: { mode: "flow" } }),
+      blocks
+    );
+    const wrapper = container.querySelector('[data-experience-target="l1"]');
+    expect(wrapper?.getAttribute("data-experience-managed")).toBe("");
+  });
 });
 
 describe("ExperienceLayerRenderer — dispatcher behavior", () => {
   afterEach(cleanup);
+
+  it("does NOT mark non-block layer types as managed (Milestone H: managed is block-specific, not a blanket default)", () => {
+    const { container } = renderLayer(layer({ id: "l1", type: "text" }));
+    const wrapper = container.querySelector('[data-experience-target="l1"]');
+    expect(wrapper?.hasAttribute("data-experience-managed")).toBe(false);
+  });
 
   it("skips rendering entirely when layer.hidden is true", () => {
     const { container } = renderLayer(layer({ hidden: true }));
