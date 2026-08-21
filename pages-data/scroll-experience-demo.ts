@@ -108,6 +108,15 @@ const heroScene: ExperienceScene = {
           { at: 0, value: 30 },
           { at: 0.12, value: 0 },
         ],
+        // Milestone B1/C1: color track — הצבע "מתיישב" מ-muted לכיוון accent
+        // בדיוק עם עליית ה-opacity (אותו טווח 0->0.12), ומחזיק בדיוק את גוון
+        // ה-accent הסטטי שהיה כאן קודם (#22D3EE, nova-dark) -- מוכיח שה-track
+        // חי בשלום עם layer.style.color הסטטי (§B4: var(--exp-color, fallback))
+        // ולא שובר את המראה הסופי, רק מוסיף תנועה עדינה לכניסה.
+        color: [
+          { at: 0, value: "#9AA7C7" },
+          { at: 0.12, value: "#22D3EE" },
+        ],
       },
     },
     {
@@ -238,6 +247,16 @@ const typographyScene: ExperienceScene = {
           { at: 0.25, value: 0 },
           { at: 0.85, value: 0 },
           { at: 1, value: 6 },
+        ],
+        // Milestone B1/C1: clip track — חשיפה (wipe) מלמטה כלפי מעלה, באותו
+        // טווח בדיוק כמו ה-opacity/blur (0->0.25 כניסה, 0.85->1 יציאה) --
+        // מחזק את אותה כוריאוגרפיה קיימת במקום להתחרות איתה (§0 עקרון 2:
+        // CLEAN/CINEMATIC/RESTRAINED, לא אפקט נוסף בפני עצמו).
+        clip: [
+          { at: 0, value: 0 },
+          { at: 0.25, value: 1 },
+          { at: 0.85, value: 1 },
+          { at: 1, value: 0 },
         ],
       },
     },
