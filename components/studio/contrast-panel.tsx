@@ -19,13 +19,21 @@ const gradeStyles: Record<ContrastGrade, string> = {
  * בדיקת נגישות חיה: מחשב את יחס הניגודיות של צירופי הצבעים
  * המרכזיים בערכה לפי WCAG 2.2, ומציע תיקון אוטומטי לצבעי הטקסט
  * שעל primary ועל accent.
+ *
+ * צמצום UX 21/08 (ממצא #3 של ה-audit): במקום 8 שורות אבחון קבועות
+ * שתופסות מסך שלם גם כשהכול תקין — מצב "חריגים בלבד": כשהכול עובר,
+ * שורת ✓ אחת; רק צירוף שנכשל מקבל שורה מלאה עם כפתור תקן. הכשל נהיה
+ * *בולט יותר*, לא פחות — הוא כבר לא טובע בים של ירוק.
  */
 export function ContrastPanel({
   theme,
   onFix,
+  exceptionsOnly = false,
 }: {
   theme: Theme;
   onFix: (key: "onPrimary" | "onAccent") => void;
+  /** מציג רק צירופים בעייתיים; כשהכול תקין — שורת אישור אחת */
+  exceptionsOnly?: boolean;
 }) {
   const c = theme.colors;
   const pairs: Array<{
@@ -44,11 +52,33 @@ export function ContrastPanel({
     { label: "גבול רכיבים (שדות/כרטיסים) על רקע העמוד", fg: c.border, bg: c.background },
   ];
 
+  const graded = pairs.map((p) => {
+    const ratio = contrastRatio(p.fg, p.bg);
+    const grade: ContrastGrade = ratio === null ? "fail" : gradeContrast(ratio);
+    return { ...p, ratio, grade };
+  });
+  // "בעייתי" בהקשר תצוגה: כשל מלא או AA-large (מספיק רק לטקסט גדול).
+  // חריג: שורת הגבול נמדדת מול רף 3:1 של רכיבי UI (WCAG 1.4.11), לא מול
+  // רף הטקסט — לכן AA-large עבורה הוא תקין ולא מוצג כבעיה.
+  const problems = graded.filter((p) =>
+    p.label.startsWith("גבול") ? p.grade === "fail" : p.grade === "fail" || p.grade === "AA-large"
+  );
+
+  if (exceptionsOnly && problems.length === 0) {
+    return (
+      <p className="flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800">
+        <span aria-hidden="true">✓</span>
+        כל צירופי הצבעים עומדים בתקן הנגישות (WCAG AA)
+      </p>
+    );
+  }
+
+  const shown = exceptionsOnly ? problems : graded;
+
   return (
     <ul className="space-y-2.5">
-      {pairs.map((p) => {
-        const ratio = contrastRatio(p.fg, p.bg);
-        const grade = ratio === null ? "fail" : gradeContrast(ratio);
+      {shown.map((p) => {
+        const { ratio, grade } = p;
         const needsFix = p.fixKey && (grade === "fail" || grade === "AA-large");
         return (
           <li

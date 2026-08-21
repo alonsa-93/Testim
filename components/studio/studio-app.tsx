@@ -28,8 +28,10 @@ import {
 } from "@/lib/effects";
 import { FONT_PAIRS } from "@/lib/font-pairs";
 import { shuffleTheme } from "@/lib/shuffle";
-import { bestTextOn } from "@/lib/contrast";
-import { emptyPage, looksLikePage, normalizePage, type Page } from "@/lib/page";
+import { bestTextOn, deriveBorder, deriveHover, deriveMuted } from "@/lib/contrast";
+import { emptyPage, looksLikePage, normalizePage, newBlockId, type Page, type PageBlockInstance } from "@/lib/page";
+import { getBlockDef } from "@/components/blocks/registry";
+import { EXPERIENCE_PRESETS, instantiatePresetScene } from "@/lib/experience-presets";
 import { PageRenderer } from "@/components/page-renderer";
 import { ThemeScope } from "@/components/theme-scope";
 import { StructurePanel } from "@/components/studio/structure-panel";
@@ -38,6 +40,7 @@ import {
   ChipRow,
   CheckboxField,
   ColorField,
+  ModifiedBadge,
   PanelSection,
   SelectField,
   SliderField,
@@ -46,7 +49,7 @@ import {
 import { ContrastPanel } from "@/components/studio/contrast-panel";
 import { ExperienceEditor } from "@/components/studio/experience-editor";
 import { ExperienceLivePreview } from "@/components/studio/experience-live-preview";
-import { emptyExperience } from "@/lib/experience";
+import { emptyExperience, newSceneId, type ExperienceScene } from "@/lib/experience";
 
 const THEME_DRAFT_KEY = "testim-studio-draft";
 const PAGE_DRAFT_KEY = "testim-studio-page";
@@ -111,6 +114,14 @@ export function StudioApp() {
   const [replayKey, setReplayKey] = useState(0);
   /** data-studio-motion="off" בזמן עריכת תוכן — עוצר רעידות תצוגה תוך כדי הקלדה */
   const [typing, setTyping] = useState(false);
+  /** צמצום UX 21/08: מודאל ⚙ "הגדרות דף וערכה" — כל השדות החד-פעמיים
+   * (שם/מזהה דף, מטא לגוגל, שם/מזהה ערכה, הוראות פרסום) עברו לכאן,
+   * כדי שהטאבים ייפתחו ישר על מה שעורכים כל סשן: בלוקים וצבעים. */
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  /** גזירת צבעים אוטומטית: hover/on-colors/muted/border מחושבים מצבעי
+   * הליבה (ממצא ה-audit: 5 מתוך 10 שדות הצבע נגזרים). עריכה ידנית של
+   * שדה נגזר מכבה את המצב האוטומטי כדי לא לדרוס את המשתמש. */
+  const [autoDeriveColors, setAutoDeriveColors] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -199,6 +210,33 @@ export function StudioApp() {
 
   const setColor = (key: keyof ThemeColors, value: string) =>
     setTheme((t) => ({ ...t, colors: { ...t.colors, [key]: value } }));
+
+  /** קובע צבע ליבה, וכשהגזירה האוטומטית פעילה מעדכן איתו אטומית גם את
+   * הצבעים הנגזרים ממנו — דרך אותם setters, כך שסכמת הערכה לא משתנה
+   * וכל ערך שנשמר הוא הקס קונקרטי רגיל. */
+  const setCoreColor = (key: keyof ThemeColors, value: string) =>
+    setTheme((t) => {
+      const colors = { ...t.colors, [key]: value };
+      if (autoDeriveColors) {
+        if (key === "primary") {
+          colors.primaryHover = deriveHover(value) ?? colors.primaryHover;
+          colors.onPrimary = bestTextOn(value);
+        }
+        if (key === "accent") colors.onAccent = bestTextOn(value);
+        if (key === "text" || key === "background") {
+          colors.textMuted = deriveMuted(colors.text, colors.background) ?? colors.textMuted;
+          colors.border = deriveBorder(colors.text, colors.background) ?? colors.border;
+        }
+      }
+      return { ...t, colors };
+    });
+
+  /** עריכה ידנית של שדה נגזר: קודם מכבה את הגזירה האוטומטית (אחרת השינוי
+   * היה נדרס בשינוי הליבה הבא), ואז קובעת את הערך */
+  const setDerivedColor = (key: keyof ThemeColors, value: string) => {
+    setAutoDeriveColors(false);
+    setColor(key, value);
+  };
   const setTypography = <K extends keyof Theme["typography"]>(
     key: K,
     value: Theme["typography"][K]
@@ -252,6 +290,45 @@ export function StudioApp() {
       setBaseId(pageTheme.id);
       setTheme(structuredClone(pageTheme));
     }
+  }
+
+  /** מצב-ריק פעיל (ממצא #7): הוספת בלוק פתיחה ישירות מהקנבס הריק,
+   * באותו מסלול בדיוק שבו StructurePanel מוסיף בלוק (registry defaults). */
+  function addFirstBlock(type: string) {
+    const def = getBlockDef(type);
+    if (!def) return;
+    const instance: PageBlockInstance = {
+      id: newBlockId(type, page.blocks),
+      type,
+      content: structuredClone(def.defaults),
+    };
+    setPage((p) => ({ ...p, blocks: [...p.blocks, instance] }));
+  }
+
+  /** מצב-ריק פעיל בחוויית גלילה: תבנית פתיחה ישירות מהקנבס — אותו מסלול
+   * remapping (instantiatePresetScene) של "+ הוספת סצנה" בפאנל. */
+  function addFirstScene(base: Partial<ExperienceScene>) {
+    setPage((p) => {
+      const config = p.experience ?? emptyExperience();
+      const { layers, tracks } = instantiatePresetScene(
+        base,
+        config.scenes.flatMap((sc) => sc.layers),
+        config.scenes.flatMap((sc) => sc.tracks)
+      );
+      const scene: ExperienceScene = {
+        id: newSceneId(config.scenes),
+        name: base.name ?? `סצנה ${config.scenes.length + 1}`,
+        composition: base.composition ?? "stage",
+        pinned: base.pinned ?? true,
+        durationVh: base.durationVh ?? config.settings.defaultDurationVh,
+        background: base.background,
+        transition: base.transition ?? "fade",
+        layers,
+        tracks,
+        blockRefs: base.blockRefs,
+      };
+      return { ...p, experience: { ...config, enabled: true, scenes: [...config.scenes, scene] } };
+    });
   }
 
   function startNewPage() {
@@ -480,6 +557,14 @@ export function StudioApp() {
           />
           <button
             type="button"
+            onClick={() => setSettingsOpen(true)}
+            title="שם ומזהה של הדף והערכה, כותרת ותיאור לגוגל, והוראות פרסום"
+            className="cursor-pointer rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+          >
+            <span aria-hidden="true">⚙</span> הגדרות
+          </button>
+          <button
+            type="button"
             onClick={() => fileInputRef.current?.click()}
             className="cursor-pointer rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
           >
@@ -631,63 +716,27 @@ export function StudioApp() {
                 />
               ) : (
                 <>
-                  <PanelSection title="הדף שאני עורך">
-                    <TextField
-                      label="שם הדף"
-                      value={page.name}
-                      onChange={(v) => setPage((p) => ({ ...p, name: v }))}
-                    />
-                    <TextField
-                      label="מזהה (באנגלית)"
-                      dir="ltr"
-                      value={page.id}
-                      onChange={(v) => setPage((p) => ({ ...p, id: v }))}
-                      onBlur={() =>
-                        setPage((p) => ({ ...p, id: sanitizeId(p.id) }))
-                      }
-                      hint="קובע את הכתובת: /p/<מזהה> — אותיות לטיניות, ספרות ומקפים"
-                    />
-                    <TextField
-                      label="כותרת לדפדפן ולגוגל"
-                      value={page.meta.title}
-                      onChange={(v) =>
-                        setPage((p) => ({ ...p, meta: { ...p.meta, title: v } }))
-                      }
-                    />
-                    <TextField
-                      label="תיאור לגוגל"
-                      value={page.meta.description}
-                      onChange={(v) =>
-                        setPage((p) => ({
-                          ...p,
-                          meta: { ...p.meta, description: v },
-                        }))
-                      }
-                    />
-                    <p className="rounded-md bg-slate-50 p-2.5 text-xs text-slate-500">
-                      העיצוב מגיע מהערכה{" "}
-                      <span className="font-bold">{theme.name}</span> — לשינוי
-                      צבעים ופונטים עברו לטאב ״עיצוב״.
-                    </p>
-                    <div className="flex flex-wrap gap-3">
+                  {/* צמצום UX 21/08: הבלוקים — האובייקט שעורכים כל סשן — הם
+                      הדבר הראשון בטאב. שם/מזהה/מטא (שדות חד-פעמיים) עברו
+                      למודאל ⚙ "הגדרות" שבכותרת. */}
+                  <div className="flex flex-wrap items-center gap-3 text-sm">
+                    <button
+                      type="button"
+                      onClick={startNewPage}
+                      className="cursor-pointer font-semibold text-indigo-600 hover:underline"
+                    >
+                      דף חדש וריק
+                    </button>
+                    {pages.length > 0 && (
                       <button
                         type="button"
-                        onClick={startNewPage}
-                        className="cursor-pointer text-sm font-semibold text-indigo-600 hover:underline"
+                        onClick={() => loadPage(pages[0].id)}
+                        className="cursor-pointer font-semibold text-slate-500 hover:underline"
                       >
-                        דף חדש וריק
+                        טעינת ״{pages[0].name}״
                       </button>
-                      {pages.length > 0 && (
-                        <button
-                          type="button"
-                          onClick={() => loadPage(pages[0].id)}
-                          className="cursor-pointer text-sm font-semibold text-slate-500 hover:underline"
-                        >
-                          טעינת ״{pages[0].name}״
-                        </button>
-                      )}
-                    </div>
-                  </PanelSection>
+                    )}
+                  </div>
 
                   <PanelSection title="הבלוקים בדף">
                     <StructurePanel
@@ -697,18 +746,6 @@ export function StudioApp() {
                       onSelect={setSelectedBlockId}
                     />
                   </PanelSection>
-
-                  <div className="rounded-lg bg-slate-50 p-3.5 text-xs leading-relaxed text-slate-500">
-                    <p className="font-bold text-slate-700">איך מפרסמים את הדף?</p>
-                    <p className="mt-1">
-                      לוחצים ״הורדת הדף״, שומרים את הקובץ בתיקיית{" "}
-                      <code dir="ltr" className="font-mono">pages-data/</code>{" "}
-                      ומוסיפים לו שורה ב־
-                      <code dir="ltr" className="font-mono">pages-data/index.ts</code>.
-                      הדף יעלה בכתובת{" "}
-                      <code dir="ltr" className="font-mono">/p/{page.id || "..."}</code>.
-                    </p>
-                  </div>
 
                   {page.blocks.length > 0 && (
                     <div className="border-t border-slate-200 pt-4">
@@ -750,39 +787,51 @@ export function StudioApp() {
                   />
                 </PanelSection>
 
-                <PanelSection title="זהות הערכה">
-                  <TextField
-                    label="שם הערכה"
-                    value={theme.name}
-                    onChange={(v) => setTheme((t) => ({ ...t, name: v }))}
-                  />
-                  <TextField
-                    label="מזהה (באנגלית)"
-                    dir="ltr"
-                    value={theme.id}
-                    onChange={(v) => setTheme((t) => ({ ...t, id: v }))}
-                    onBlur={() =>
-                      setTheme((t) => ({ ...t, id: sanitizeId(t.id) }))
-                    }
-                    hint="שם הקובץ וכתובת /preview — אותיות לטיניות, ספרות ומקפים"
-                  />
-                </PanelSection>
+                {/* ===== צמצום UX 21/08 =====
+                    לפני: 13 סקשנים תמיד-פתוחים, 3,547px גלילה (~5 מסכים, נמדד).
+                    אחרי: שכבה מהירה (בסיס/צבעים/פונטים/אנימציה) גלויה, וכל
+                    השאר בסקשנים מתקפלים עם תג "N שינויים" — שום יכולת לא
+                    הוסרה, רק ההיררכיה השתנתה. זהות הערכה עברה למודאל ⚙. */}
 
                 <PanelSection title="צבעים">
-                  <ColorField label="ראשי (primary)" value={theme.colors.primary} onChange={(v) => setColor("primary", v)} isModified={colorModified("primary")} onReset={() => resetColor("primary")} />
-                  <ColorField label="ראשי במעבר עכבר" value={theme.colors.primaryHover} onChange={(v) => setColor("primaryHover", v)} isModified={colorModified("primaryHover")} onReset={() => resetColor("primaryHover")} />
-                  <ColorField label="טקסט על ראשי" value={theme.colors.onPrimary} onChange={(v) => setColor("onPrimary", v)} isModified={colorModified("onPrimary")} onReset={() => resetColor("onPrimary")} />
-                  <ColorField label="מבטא (accent)" value={theme.colors.accent} onChange={(v) => setColor("accent", v)} isModified={colorModified("accent")} onReset={() => resetColor("accent")} />
-                  <ColorField label="טקסט על מבטא" value={theme.colors.onAccent} onChange={(v) => setColor("onAccent", v)} isModified={colorModified("onAccent")} onReset={() => resetColor("onAccent")} />
-                  <ColorField label="רקע העמוד" value={theme.colors.background} onChange={(v) => setColor("background", v)} isModified={colorModified("background")} onReset={() => resetColor("background")} />
-                  <ColorField label="רקע כרטיסים" value={theme.colors.surface} onChange={(v) => setColor("surface", v)} isModified={colorModified("surface")} onReset={() => resetColor("surface")} />
-                  <ColorField label="טקסט ראשי" value={theme.colors.text} onChange={(v) => setColor("text", v)} isModified={colorModified("text")} onReset={() => resetColor("text")} />
-                  <ColorField label="טקסט משני" value={theme.colors.textMuted} onChange={(v) => setColor("textMuted", v)} isModified={colorModified("textMuted")} onReset={() => resetColor("textMuted")} />
-                  <ColorField label="קווי מסגרת" value={theme.colors.border} onChange={(v) => setColor("border", v)} isModified={colorModified("border")} onReset={() => resetColor("border")} />
-                </PanelSection>
+                  <ColorField label="צבע ראשי" value={theme.colors.primary} onChange={(v) => setCoreColor("primary", v)} isModified={colorModified("primary")} onReset={() => resetColor("primary")} />
+                  <ColorField label="צבע מבטא" value={theme.colors.accent} onChange={(v) => setCoreColor("accent", v)} isModified={colorModified("accent")} onReset={() => resetColor("accent")} />
+                  <ColorField label="רקע העמוד" value={theme.colors.background} onChange={(v) => setCoreColor("background", v)} isModified={colorModified("background")} onReset={() => resetColor("background")} />
+                  <ColorField label="רקע כרטיסים" value={theme.colors.surface} onChange={(v) => setCoreColor("surface", v)} isModified={colorModified("surface")} onReset={() => resetColor("surface")} />
+                  <ColorField label="טקסט" value={theme.colors.text} onChange={(v) => setCoreColor("text", v)} isModified={colorModified("text")} onReset={() => resetColor("text")} />
 
-                <PanelSection title="נגישות — ניגודיות צבעים">
-                  <ContrastPanel theme={theme} onFix={fixOnColor} />
+                  <details className="rounded-md border border-slate-200 p-2.5">
+                    <summary className="cursor-pointer select-none text-sm font-semibold text-slate-700">
+                      צבעים נגזרים (hover, טקסט־על, משני, מסגרות) ▾
+                    </summary>
+                    <div className="mt-3 space-y-4">
+                      <CheckboxField
+                        label="חישוב אוטומטי מצבעי הליבה"
+                        checked={autoDeriveColors}
+                        onChange={setAutoDeriveColors}
+                      />
+                      {autoDeriveColors ? (
+                        <p className="rounded-md bg-slate-50 p-2.5 text-xs leading-relaxed text-slate-500">
+                          חמשת הצבעים האלה מחושבים אוטומטית בכל שינוי של צבע
+                          ליבה — תמיד בניגודיות תקינה: ראשי במעבר עכבר, טקסט על
+                          ראשי, טקסט על מבטא, טקסט משני וקווי מסגרת. כבו את
+                          הסימון כדי לשלוט בהם ידנית.
+                        </p>
+                      ) : (
+                        <>
+                          <ColorField label="ראשי במעבר עכבר" value={theme.colors.primaryHover} onChange={(v) => setDerivedColor("primaryHover", v)} isModified={colorModified("primaryHover")} onReset={() => resetColor("primaryHover")} />
+                          <ColorField label="טקסט על ראשי" value={theme.colors.onPrimary} onChange={(v) => setDerivedColor("onPrimary", v)} isModified={colorModified("onPrimary")} onReset={() => resetColor("onPrimary")} />
+                          <ColorField label="טקסט על מבטא" value={theme.colors.onAccent} onChange={(v) => setDerivedColor("onAccent", v)} isModified={colorModified("onAccent")} onReset={() => resetColor("onAccent")} />
+                          <ColorField label="טקסט משני" value={theme.colors.textMuted} onChange={(v) => setDerivedColor("textMuted", v)} isModified={colorModified("textMuted")} onReset={() => resetColor("textMuted")} />
+                          <ColorField label="קווי מסגרת" value={theme.colors.border} onChange={(v) => setDerivedColor("border", v)} isModified={colorModified("border")} onReset={() => resetColor("border")} />
+                        </>
+                      )}
+                    </div>
+                  </details>
+
+                  {/* ניגודיות במצב חריגים-בלבד: שורת ✓ אחת כשהכול תקין,
+                      שורה מלאה + כפתור תקן רק לצירוף שנכשל */}
+                  <ContrastPanel theme={theme} onFix={fixOnColor} exceptionsOnly />
                 </PanelSection>
 
                 <PanelSection title="חבילות פונטים">
@@ -832,11 +881,31 @@ export function StudioApp() {
                     })}
                   </div>
 
-                  <details className="rounded-md border border-slate-200 p-2.5">
-                    <summary className="cursor-pointer select-none text-sm font-semibold text-slate-700">
-                      התאמה ידנית ▾
-                    </summary>
-                    <div className="mt-3 space-y-4">
+                </PanelSection>
+
+                <PanelSection title="אנימציה">
+                  <ChipRow
+                    label="עוצמת אנימציית כניסה לכל הדף"
+                    value={animChipValue}
+                    onChange={setAnimChip}
+                    options={animChipOptions}
+                    hint="בלוק בודד יכול לעקוף את זה תחת ״אנימציה״ בעורך הבלוק שלו"
+                    isModified={!!activeTheme && animChipValue !== animChipValueOf(activeTheme)}
+                    onReset={() => {
+                      if (!activeTheme) return;
+                      setAnimation("style", activeTheme.effects.animation.style);
+                      setAnimation("intensity", activeTheme.effects.animation.intensity);
+                      bumpReplay();
+                    }}
+                  />
+                </PanelSection>
+
+                <PanelSection
+                  title="טיפוגרפיה מתקדמת"
+                  collapsible
+                  defaultOpen={false}
+                  badge={<ModifiedBadge count={(["fontHeading", "fontBody", "baseSize", "scale", "headingWeight"] as const).filter((k) => typographyModified(k)).length} />}
+                >
                       <SelectField
                         label="פונט כותרות"
                         value={theme.typography.fontHeading}
@@ -886,11 +955,14 @@ export function StudioApp() {
                         isModified={typographyModified("headingWeight")}
                         onReset={() => resetTypography("headingWeight")}
                       />
-                    </div>
-                  </details>
-                </PanelSection>
+                                    </PanelSection>
 
-                <PanelSection title="צורה ופינות">
+                <PanelSection
+                  title="צורה ופריסה"
+                  collapsible
+                  defaultOpen={false}
+                  badge={<ModifiedBadge count={(["cardRadius", "buttonRadius", "fieldRadius"] as const).filter((k) => shapeModified(k)).length + (["sectionSpacing", "maxWidth"] as const).filter((k) => layoutModified(k)).length} />}
+                >
                   <SliderField
                     label="עיגול כרטיסים"
                     value={theme.shape.cardRadius}
@@ -924,9 +996,7 @@ export function StudioApp() {
                     isModified={shapeModified("fieldRadius")}
                     onReset={() => resetShape("fieldRadius")}
                   />
-                </PanelSection>
-
-                <PanelSection title="פריסה">
+                
                   <SliderField
                     label="ריווח בין סקשנים"
                     value={theme.layout.sectionSpacing}
@@ -949,24 +1019,12 @@ export function StudioApp() {
                   />
                 </PanelSection>
 
-                <PanelSection title="אנימציה">
-                  <ChipRow
-                    label="עוצמת אנימציית כניסה לכל הדף"
-                    value={animChipValue}
-                    onChange={setAnimChip}
-                    options={animChipOptions}
-                    hint="בלוק בודד יכול לעקוף את זה תחת ״אנימציה״ בעורך הבלוק שלו"
-                    isModified={!!activeTheme && animChipValue !== animChipValueOf(activeTheme)}
-                    onReset={() => {
-                      if (!activeTheme) return;
-                      setAnimation("style", activeTheme.effects.animation.style);
-                      setAnimation("intensity", activeTheme.effects.animation.intensity);
-                      bumpReplay();
-                    }}
-                  />
-                </PanelSection>
-
-                <PanelSection title="רקע">
+                <PanelSection
+                  title="אפקטים ופיניש"
+                  collapsible
+                  defaultOpen={false}
+                  badge={<ModifiedBadge count={(["background", "backgroundIntensity", "noise", "cardStyle", "shadow", "glow", "glowColor", "buttonStyle"] as const).filter((k) => effectsModified(k)).length} />}
+                >
                   <ChipRow
                     label="סוג רקע דקורטיבי"
                     value={theme.effects.background}
@@ -997,9 +1055,7 @@ export function StudioApp() {
                     isModified={effectsModified("noise")}
                     onReset={() => resetEffects("noise")}
                   />
-                </PanelSection>
-
-                <PanelSection title="כרטיסים">
+                
                   <ChipRow
                     label="סגנון כרטיסים"
                     value={theme.effects.cardStyle}
@@ -1022,9 +1078,7 @@ export function StudioApp() {
                     isModified={effectsModified("shadow")}
                     onReset={() => resetEffects("shadow")}
                   />
-                </PanelSection>
-
-                <PanelSection title="זוהר">
+                
                   <ChipRow
                     label="עוצמת זוהר (ספוטלייט, הילות)"
                     value={theme.effects.glow}
@@ -1045,9 +1099,7 @@ export function StudioApp() {
                       onReset={() => resetEffects("glowColor")}
                     />
                   )}
-                </PanelSection>
-
-                <PanelSection title="כפתורים">
+                
                   <ChipRow
                     label="סגנון כפתורים"
                     value={theme.effects.buttonStyle}
@@ -1120,22 +1172,140 @@ export function StudioApp() {
                       imagePreviewOverrides={imagePreviewOverrides}
                     />
                   ) : (
-                    <p className="p-20 text-center text-muted">
-                      אין עדיין סצנות בחוויית הגלילה. הוסיפו את הראשונה מהפאנל.
-                    </p>
+                    <div className="px-10 py-16 text-center">
+                      <p className="text-lg font-bold text-slate-800">
+                        בחרו תבנית פתיחה — ותראו אותה זזה מיד
+                      </p>
+                      <p className="mx-auto mt-1 max-w-md text-sm text-slate-500">
+                        כל תבנית היא סצנה אמיתית וניתנת לעריכה מלאה. אפשר גם
+                        להתחיל מסצנה ריקה דרך ״+ הוספת סצנה״ בפאנל.
+                      </p>
+                      <div className="mx-auto mt-6 grid max-w-2xl grid-cols-2 gap-3 md:grid-cols-3">
+                        {EXPERIENCE_PRESETS.map((preset) => (
+                          <button
+                            key={preset.id}
+                            type="button"
+                            onClick={() => addFirstScene(preset.scene)}
+                            className="cursor-pointer rounded-xl border border-slate-200 bg-white p-4 text-start shadow-sm transition-all hover:-translate-y-0.5 hover:border-indigo-400 hover:shadow-md"
+                          >
+                            <span className="block text-sm font-bold text-slate-900">{preset.label}</span>
+                            <span className="mt-1 block text-xs leading-relaxed text-slate-500">{preset.description}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   )
                 ) : page.blocks.length > 0 ? (
                   <PageRenderer page={page} theme={theme} />
                 ) : (
-                  <p className="p-20 text-center text-muted">
-                    הדף ריק. הוסיפו בלוק ראשון מהפאנל.
-                  </p>
+                  <div className="px-10 py-16 text-center">
+                    <p className="text-lg font-bold text-slate-800">הדף ריק — נתחיל?</p>
+                    <div className="mx-auto mt-6 flex max-w-md flex-col gap-3 sm:flex-row sm:justify-center">
+                      <button
+                        type="button"
+                        onClick={() => addFirstBlock("hero")}
+                        className="cursor-pointer rounded-xl bg-indigo-600 px-5 py-3 text-sm font-bold text-white shadow-sm hover:bg-indigo-500"
+                      >
+                        + בלוק פתיחה (Hero)
+                      </button>
+                      {pages.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => loadPage(pages[0].id)}
+                          className="cursor-pointer rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 hover:border-indigo-400"
+                        >
+                          טעינת דף דוגמה מלא
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 )}
               </ThemeScope>
             </div>
           </div>
         </main>
       </div>
+
+      {/* מודאל ⚙ הגדרות דף וערכה — הבית החדש של כל השדות החד-פעמיים
+          (ממצא #4 של ה-audit: שדות set-once ישבו בראש שני הטאבים). */}
+      {settingsOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setSettingsOpen(false);
+          }}
+          role="dialog"
+          aria-modal="true"
+          aria-label="הגדרות דף וערכה"
+        >
+          <div className="max-h-[85dvh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="mb-5 flex items-center justify-between">
+              <h2 className="text-lg font-bold text-slate-900">הגדרות דף וערכה</h2>
+              <button
+                type="button"
+                onClick={() => setSettingsOpen(false)}
+                aria-label="סגירה"
+                className="flex size-8 cursor-pointer items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="space-y-6">
+              <PanelSection title="הדף">
+                <TextField
+                  label="שם הדף"
+                  value={page.name}
+                  onChange={(v) => setPage((p) => ({ ...p, name: v }))}
+                />
+                <TextField
+                  label="מזהה (באנגלית)"
+                  dir="ltr"
+                  value={page.id}
+                  onChange={(v) => setPage((p) => ({ ...p, id: v }))}
+                  onBlur={() => setPage((p) => ({ ...p, id: sanitizeId(p.id) }))}
+                  hint="קובע את הכתובת: /p/<מזהה> — אותיות לטיניות, ספרות ומקפים"
+                />
+                <TextField
+                  label="כותרת לדפדפן ולגוגל"
+                  value={page.meta.title}
+                  onChange={(v) => setPage((p) => ({ ...p, meta: { ...p.meta, title: v } }))}
+                />
+                <TextField
+                  label="תיאור לגוגל"
+                  value={page.meta.description}
+                  onChange={(v) => setPage((p) => ({ ...p, meta: { ...p.meta, description: v } }))}
+                />
+              </PanelSection>
+              <PanelSection title="הערכה">
+                <TextField
+                  label="שם הערכה"
+                  value={theme.name}
+                  onChange={(v) => setTheme((t) => ({ ...t, name: v }))}
+                />
+                <TextField
+                  label="מזהה (באנגלית)"
+                  dir="ltr"
+                  value={theme.id}
+                  onChange={(v) => setTheme((t) => ({ ...t, id: v }))}
+                  onBlur={() => setTheme((t) => ({ ...t, id: sanitizeId(t.id) }))}
+                  hint="שם הקובץ וכתובת /preview — אותיות לטיניות, ספרות ומקפים"
+                />
+              </PanelSection>
+              <div className="rounded-lg bg-slate-50 p-3.5 text-xs leading-relaxed text-slate-500">
+                <p className="font-bold text-slate-700">איך מפרסמים את הדף?</p>
+                <p className="mt-1">
+                  לוחצים ״הורדת הדף״, שומרים את הקובץ בתיקיית{" "}
+                  <code dir="ltr" className="font-mono">pages-data/</code>{" "}
+                  ומוסיפים לו שורה ב־
+                  <code dir="ltr" className="font-mono">pages-data/index.ts</code>.
+                  הדף יעלה בכתובת{" "}
+                  <code dir="ltr" className="font-mono">/p/{page.id || "..."}</code>.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

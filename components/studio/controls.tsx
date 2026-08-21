@@ -11,17 +11,54 @@ import { useId, useState, type ReactNode } from "react";
 export function PanelSection({
   title,
   children,
+  collapsible = false,
+  defaultOpen = true,
+  badge,
 }: {
   title: string;
   children: ReactNode;
+  /** סקשן מתקפל (details/summary) — הדרך המרכזית לצמצם את "מיליון התפריטים":
+   * פקדים בשימוש מדי-פעם/נדיר מתקפלים כברירת מחדל, והכול נשאר נגיש בקליק. */
+  collapsible?: boolean;
+  defaultOpen?: boolean;
+  /** תג קטן ליד הכותרת — למשל ספירת שינויים ("2 שינויים") כשהסקשן סגור,
+   * כדי ששינוי קיים לעולם לא ייעלם מהעין רק כי הסקשן מקופל. */
+  badge?: ReactNode;
 }) {
+  if (!collapsible) {
+    return (
+      <section className="space-y-4">
+        <h2 className="flex items-center justify-between border-b border-slate-200 pb-2 text-sm font-bold text-slate-900">
+          <span>{title}</span>
+          {badge}
+        </h2>
+        {children}
+      </section>
+    );
+  }
   return (
-    <section className="space-y-4">
-      <h2 className="border-b border-slate-200 pb-2 text-sm font-bold text-slate-900">
-        {title}
-      </h2>
-      {children}
-    </section>
+    <details open={defaultOpen} className="group">
+      <summary className="flex cursor-pointer select-none items-center justify-between border-b border-slate-200 pb-2 text-sm font-bold text-slate-900 marker:content-none [&::-webkit-details-marker]:hidden">
+        <span className="flex items-center gap-2">
+          <span aria-hidden="true" className="text-xs text-slate-400 transition-transform group-open:rotate-90">
+            ◂
+          </span>
+          {title}
+        </span>
+        {badge}
+      </summary>
+      <div className="mt-4 space-y-4">{children}</div>
+    </details>
+  );
+}
+
+/** תג "N שינויים" לסקשן מקופל — מוצג רק כשיש באמת שינויים מול ערכת הבסיס */
+export function ModifiedBadge({ count }: { count: number }) {
+  if (count === 0) return null;
+  return (
+    <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[11px] font-bold text-indigo-700">
+      {count === 1 ? "שינוי אחד" : `${count} שינויים`}
+    </span>
   );
 }
 

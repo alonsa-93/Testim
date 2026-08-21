@@ -108,8 +108,16 @@ export const EXPERIENCE_PRESETS: ExperiencePreset[] = [
       pinned: true,
       durationVh: 260,
       transition: "fade",
-      background: { color: "background" },
-      layers: [titleLayer("כותרת קולנועית", "50%")],
+      // חשיכה אמיתית: ה-walkthrough (21/08) מדד שהתבנית הבטיחה "מתוך
+      // חשיכה" וסיפקה טקסט קטן על רקע בהיר — רקע כהה קבוע + כותרת h1
+      // בהירה מקיימים סוף-סוף את ההבטחה של התיאור. ניתן לעריכה מלאה.
+      background: { color: "#0B1120" },
+      layers: [
+        {
+          ...titleLayer("כותרת קולנועית", "50%", "#F8FAFC"),
+          content: { text: "כותרת קולנועית", tag: "h1" },
+        },
+      ],
       tracks: [fadeUpTrack("preset-title", "cinematic", 0.3)],
     },
   },
