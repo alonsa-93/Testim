@@ -556,6 +556,31 @@
   rotate: var(--exp-rotate, 0deg);
   opacity: var(--exp-opacity, 1);
   filter: blur(var(--exp-blur, 0px));
+  /* Milestone B1/B4: clip הוא "כמה חשוף" (0=מוסתר,1=חשוף); ברירת המחדל
+     1 => inset(0 0 0 0) = בלי חיתוך בכלל, no-op זהה למצב הישן. כיוון
+     קבוע (מלמטה כלפי מעלה) ב-MVP — לא ניתן להגדרה עדיין, ראו PROPERTY_METADATA.clip. */
+  clip-path: inset(0 0 calc((1 - var(--exp-clip, 1)) * 100%) 0);
+  /* color: לא נכתב כאן במכוון -- .exp-motion הוא ה-wrapper של המיקום/
+     תנועה, לא בהכרח נושא הטקסט עצמו. --exp-color נכתב לכאן ע"י ה-runtime
+     (כש-track יש) ויורש לילדים -- layerStyleToCss (lib/experience.ts)
+     הוא זה שצורך var(--exp-color, ...) בפועל על התוכן הפנימי. הגדרה גם
+     כאן, ברמת defense-in-depth ל-block-ref layers שלא עוברים דרך
+     layerStyleToCss כלל: */
+  color: var(--exp-color, inherit);
+}
+
+/**
+ * Milestone B4 -- הגנת CSS כפולה לטבלת התקדימות (docs/architecture-decision-gate.md
+ * §2): גם אם RevealManagedContext (components/fx/reveal.tsx) לא תפס
+ * משום-מה, אף Reveal פנימי בתוך block-ref מנוהל לא יכול להישאר במצב
+ * "מוסתר" (before-inview) -- אותו דפוס בדיוק כמו [data-studio-motion="off"]
+ * למעלה, רק ממוקד ל-scope של block-ref מנוהל בלבד.
+ */
+[data-experience-managed] [data-animate] {
+  opacity: 1 !important;
+  translate: none;
+  scale: none;
+  filter: none;
 }
 
 /**

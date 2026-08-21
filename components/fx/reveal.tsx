@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import type { ResolvedAnim } from "@/lib/effects";
 
 /**
@@ -22,6 +22,31 @@ import type { ResolvedAnim } from "@/lib/effects";
  * אסינכרוני של IntersectionObserver, כמצופה).
  */
 
+/**
+ * דגל בעלות: כש-true, Reveal מוותר על ה-IntersectionObserver העצמאי
+ * שלו ומרונדר במצב הסופי ("revealed") מיידית — בלי data-animate/
+ * data-inview בכלל. נצרך ע"י components/experience/experience-page.tsx
+ * (ExperienceBlockRefLayer) בלבד: כש-block-ref layer בתוך scene של
+ * Experience נשלט ע"י Track, ה-Reveal הפנימי של הבלוק (§9.4 archdecision)
+ * לא יתחרה איתו על תזמון הכניסה — Track מנצח לפי טבלת התקדימות
+ * (docs/architecture-decision-gate.md §2). ברירת המחדל false שומרת על
+ * Standard ללא שינוי בכל מקום אחר.
+ */
+export const RevealManagedContext = createContext(false);
+
+/**
+ * עטיפת-component ל-RevealManagedContext.Provider, לא שימוש ישיר ב-
+ * `<RevealManagedContext.Provider>` מתוך Server Component: Next.js RSC
+ * יודע לסרוק ולקשר ייצוא של component אמיתי ממודול "use client" (בדיוק
+ * כמו Reveal עצמו), אבל גישה ל-property (`.Provider`) על אובייקט Context
+ * מיוצא, מתוך קובץ Server, לא תמיד נפתרת נכון דרך ה-boundary -- אומת
+ * אמפירית ב-`next build` (production prerender של /preview/scroll-experience
+ * נכשל עם "Element type is invalid... got: undefined" עד שתוקן לצורה הזו).
+ */
+export function RevealManaged({ children }: { children: ReactNode }) {
+  return <RevealManagedContext.Provider value={true}>{children}</RevealManagedContext.Provider>;
+}
+
 export interface RevealProps {
   /** תצורה שכבר נפתרה (תוצאת resolveAnim); null/undefined = בלי אנימציה */
   anim?: ResolvedAnim | null;
@@ -33,10 +58,11 @@ export interface RevealProps {
 export function Reveal({ anim, children, className, style }: RevealProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [inView, setInView] = useState(false);
+  const managed = useContext(RevealManagedContext);
 
   useEffect(() => {
     const el = ref.current;
-    if (!el || !anim) return;
+    if (!el || !anim || managed) return;
 
     const once = anim.once ?? true;
     const io = new IntersectionObserver(
@@ -52,9 +78,11 @@ export function Reveal({ anim, children, className, style }: RevealProps) {
     );
     io.observe(el);
     return () => io.disconnect();
-  }, [anim]);
+  }, [anim, managed]);
 
-  if (!anim) {
+  // managed: Track חיצוני (Experience) הוא הבעלים של הכניסה -- מרונדרים
+  // כמו anim=null (מצב סופי, בלי data-animate/IO) גם אם anim הועבר.
+  if (!anim || managed) {
     return (
       <div className={className} style={style}>
         {children}

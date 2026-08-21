@@ -46,6 +46,24 @@ describe("ExperienceBlockRefLayer", () => {
     );
     expect(container.querySelector('[data-experience-target]')).toBeNull();
   });
+
+  /**
+   * Milestone B4 (docs/architecture-decision-gate.md §2): block-ref layers
+   * הם הנקודה היחידה שבה Reveal-פנימי-של-בלוק יכול להתנגש עם Track
+   * חיצוני. managed מדכא את ה-Reveal של הבלוק (CTA כאן מכיל <Reveal>
+   * פנימי אמיתי, לא מדומה) -- זה הבדיקה שהאכיפה בפועל עובדת, לא רק
+   * שה-attribute קיים.
+   */
+  it("marks the wrapper data-experience-managed and suppresses the block's own inner Reveal (no data-animate)", () => {
+    const { container } = render(
+      <ExperienceBlockRefLayer blockId="cta-1" blocks={[ctaBlock()]} />
+    );
+    const target = container.querySelector('[data-experience-target="cta-1"]');
+    expect(target?.getAttribute("data-experience-managed")).toBe("");
+    // ה-CTA block מכיל <Reveal> פנימי אמיתי סביב תוכן הכרטיס -- כש-managed,
+    // אסור לו לשאת data-animate בכלל (זה בדיוק מה שהיה מתנגש עם track חיצוני)
+    expect(container.querySelector("[data-animate]")).toBeNull();
+  });
 });
 
 describe("ExperiencePage — blockRefs wiring", () => {

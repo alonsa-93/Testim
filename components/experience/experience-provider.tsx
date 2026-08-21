@@ -64,6 +64,10 @@ export function ExperienceProvider({
 
   useLayoutEffect(() => {
     const anchor = rootRef.current;
+    // Milestone B2: ה-runtime מקבל הפניה ל-anchor (גם כש-display:contents
+    // מונע ממנו box למדידה) כדי לכתוב --exp-global-progress עליו --
+    // CSS custom properties יורשות דרך display:contents כרגיל, גם בלי box.
+    runtime.setRootElement(anchor);
     // reduced-motion: אף פעם לא attach בכלל -- כל --exp-* נשאר בברירת
     // המחדל הנייטרלית שלו (§8 CSS: opacity:1, translate:0, scale:1...),
     // בדיוק כמו שstatement.tsx עושה. אפס כתיבה, אפס האזנה.
