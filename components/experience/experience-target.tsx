@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useRef, type CSSProperties, type ElementType, type ReactNode } from "react";
+import { useLayoutEffect, useRef, type CSSProperties, type ElementType, type MouseEvent, type ReactNode } from "react";
 import { useExperienceRuntime } from "./experience-provider";
 import { cn } from "@/lib/cn";
 
@@ -31,6 +31,8 @@ export function ExperienceTarget({
   className,
   style,
   managed,
+  selected,
+  onSelect,
   children,
 }: {
   id: string;
@@ -44,6 +46,17 @@ export function ExperienceTarget({
    * שכבר מנטרל את ה-IO ברמת ה-JS. נצרך ע"י ExperienceBlockRefLayer בלבד.
    */
   managed?: boolean;
+  /**
+   * Milestone D1 (בחירה-על-קנבס, docs/studio-ux-simplification.md §3.3):
+   * שני ה-props הבאים הם undefined תמיד בדף הציבורי (ExperiencePage לא
+   * מעביר אותם) — נצרכים אך ורק ע"י ExperienceLivePreview (הסטודיו).
+   * `selected` מוסיף הדגשה חזותית; `onSelect` הופך את ה-target ללחיץ.
+   * preventDefault/stopPropagation ב-onClick כאן גם מונעים תופעת-לוואי
+   * קיימת-מראש (לא נגרמה ע"י השינוי הזה): קליק על שכבת button/קישור
+   * בקנבס היה מנווט בפועל במקום לבחור אותה לעריכה.
+   */
+  selected?: boolean;
+  onSelect?: (id: string) => void;
   children: ReactNode;
 }) {
   const runtime = useExperienceRuntime();
@@ -62,8 +75,22 @@ export function ExperienceTarget({
       data-experience-target={id}
       data-scrub=""
       data-experience-managed={managed ? "" : undefined}
-      className={cn("exp-motion", className)}
+      className={cn(
+        "exp-motion",
+        onSelect && "cursor-pointer outline-2 outline-offset-2",
+        onSelect && (selected ? "outline-indigo-500" : "outline-transparent hover:outline-indigo-300"),
+        className
+      )}
       style={style}
+      onClick={
+        onSelect
+          ? (e: MouseEvent) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onSelect(id);
+            }
+          : undefined
+      }
     >
       {children}
     </Tag>

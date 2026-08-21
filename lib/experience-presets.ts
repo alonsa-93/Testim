@@ -7,7 +7,7 @@ import { newLayerId, newTrackId, type ExperienceLayer, type ExperienceScene, typ
  * עם composition/timing/layers/tracks מוכנים, כדי שיש למשתמש משהו
  * לראות ולערוך מיד (אותה פילוסופיה כמו block.defaults ב-registry.ts:
  * בלוק חדש נכנס עם תוכן דוגמה, לא ריק). נבחר ב-Phase 7 מתוך פאנל
- * "הוספת סצנה" (components/studio/experience-editor.tsx).
+ * "הוספת סצנה" (components/studio/experience-scene-list.tsx, Milestone D).
  *
  * שים לב: אלה Partial<ExperienceScene> בכוונה -- id/name/layers/tracks
  * הבסיסיים מתמלאים על ידי ה-caller (newSceneId, מזהי layer/track
@@ -24,7 +24,7 @@ export interface ExperiencePreset {
 
 /**
  * מתרגם layers/tracks של preset למזהים ייחודיים גלובלית לפני הכנסה
- * לדף (Phase 7, experience-editor.tsx). קריטי: ה-TargetRegistry של
+ * לדף (Phase 7, experience-scene-list.tsx). קריטי: ה-TargetRegistry של
  * ה-runtime הוא Map<string, HTMLElement> *אחד* לכל ה-Experience, לא
  * מפוצל לפי scene (components/experience/experience-runtime.ts) --
  * כל ה-presets למעלה חולקים מזהים גנריים כמו "preset-title"/

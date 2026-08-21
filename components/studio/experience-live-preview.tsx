@@ -24,6 +24,8 @@ export function ExperienceLivePreview({
   theme,
   selectedSceneId,
   onSelectScene,
+  selectedLayerId,
+  onSelectLayer,
   mode = "base",
   imagePreviewOverrides,
 }: {
@@ -31,6 +33,10 @@ export function ExperienceLivePreview({
   theme?: Theme;
   selectedSceneId: string | null;
   onSelectScene: (id: string) => void;
+  /** Milestone D1 (בחירה-על-קנבס) — קליק על שכבה בקנבס בוחר אותה. שני
+   * ה-props אופציונליים: תצוגות עתידיות/בדיקות יכולות להשמיט אותם. */
+  selectedLayerId?: string | null;
+  onSelectLayer?: (id: string) => void;
   /** מצב הרחפורט של תצוגת הסטודיו (desktop/tablet/mobile) — פותר את ה-
    * Responsive<T> של layout/durationVh/tracks לאותו breakpoint שנבחר
    * למעלה, בדיוק כמו שה-max-width של התצוגה כבר עושה ל-Standard. */
@@ -57,6 +63,15 @@ export function ExperienceLivePreview({
               blocks={page.blocks}
               theme={theme}
               imagePreviewOverrides={imagePreviewOverrides}
+              selected={selectedLayerId === layer.id}
+              onSelect={
+                onSelectLayer
+                  ? (id) => {
+                      onSelectScene(scene.id);
+                      onSelectLayer(id);
+                    }
+                  : undefined
+              }
             />
           ))}
           {scene.blockRefs?.map((blockId) => (
@@ -81,7 +96,12 @@ export function ExperienceLivePreview({
           כאלמנט ראשון הוא פשוט נגלל החוצה למעלה (ממצא ה-walkthrough:
           "הסרגל נעלם בדיוק כשבוחנים את הסצנה"). כאחרון — הוא צף בתחתית
           לכל אורך הגלילה ומתיישב במקומו רק בסוף. */}
-      <TimelineOverlay config={config} selectedSceneId={selectedSceneId} onSelectScene={onSelectScene} />
+      <TimelineOverlay
+        config={config}
+        selectedSceneId={selectedSceneId}
+        onSelectScene={onSelectScene}
+        selectedLayerId={selectedLayerId}
+      />
     </ExperienceProvider>
   );
 }
@@ -90,10 +110,14 @@ function TimelineOverlay({
   config,
   selectedSceneId,
   onSelectScene,
+  selectedLayerId,
 }: {
   config: ExperienceConfig;
   selectedSceneId: string | null;
   onSelectScene: (id: string) => void;
+  /** Milestone D2: כשיש שכבה נבחרת, מציגים keyframe markers של ה-tracks
+   * שלה בלבד (לא רעש של כל הסצנה) — undefined/null נופל חזרה ל-כל הסצנה. */
+  selectedLayerId?: string | null;
 }) {
   const runtime = useExperienceRuntime();
   const scene = config.scenes.find((s) => s.id === selectedSceneId) ?? config.scenes[0];
@@ -128,6 +152,22 @@ function TimelineOverlay({
 
   if (!scene) return null;
 
+  // Milestone D2 (docs/studio-ux-simplification.md §3.3): keyframe markers
+  // על ה-scrubber — כל ה-"at" הייחודיים מתוך ה-tracks הרלוונטיים, כדי
+  // שהמשתמש יראה *איפה* לאורך הסצנה קורה שינוי, לא רק "כמה אחוז עכשיו".
+  const relevantTracks = selectedLayerId
+    ? scene.tracks.filter((t) => t.target === selectedLayerId)
+    : scene.tracks;
+  const keyframeMarks = Array.from(
+    new Set(
+      relevantTracks.flatMap((t) =>
+        Object.values(t.props)
+          .filter((kfs): kfs is NonNullable<typeof kfs> => Array.isArray(kfs))
+          .flatMap((kfs) => kfs.map((kf) => kf.at))
+      )
+    )
+  ).sort((a, b) => a - b);
+
   return (
     <div
       // sticky ל-*תחתית* ולא לראש בכוונה: סצנות מוצמדות (pinned) כבר
@@ -158,7 +198,23 @@ function TimelineOverlay({
         <span className="w-10 shrink-0 text-end font-mono text-xs text-slate-400" dir="ltr">
           {Math.round(progress * 100)}%
         </span>
-        <input
+        {/* Milestone D2: עוטפים ב-relative כדי למקם את סימוני ה-keyframes
+            כשכבה מעל ה-range המקורי -- pointer-events-none כדי לא לחסום
+            גרירה של ה-thumb; קירוב ויזואלי (לא מתחשב ברוחב ה-thumb עצמו),
+            מספיק כדי לראות *איפה* קורה שינוי לאורך הסצנה. */}
+        <div className="relative w-full">
+          {keyframeMarks.length > 0 && (
+            <div className="pointer-events-none absolute inset-x-0 top-1/2 h-0" aria-hidden="true">
+              {keyframeMarks.map((at) => (
+                <span
+                  key={at}
+                  className="absolute top-1/2 size-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-amber-400"
+                  style={{ insetInlineStart: `${at * 100}%` }}
+                />
+              ))}
+            </div>
+          )}
+          <input
           type="range"
           min={0}
           max={100}
@@ -174,6 +230,7 @@ function TimelineOverlay({
           aria-label={`טיימליין — ${scene.name}`}
           className="w-full cursor-pointer accent-indigo-500"
         />
+        </div>
       </div>
     </div>
   );

@@ -32,6 +32,8 @@ export function ExperienceLayerRenderer({
   blocks,
   theme,
   imagePreviewOverrides,
+  selected,
+  onSelect,
 }: {
   layer: ExperienceLayerConfig;
   /** נדרש רק ל-layer.type === "block" -- הפניה לבלוקים הקיימים של הדף */
@@ -42,6 +44,9 @@ export function ExperienceLayerRenderer({
    * ל-content.src עצמו, כך שלא נשמר ב-localStorage/בייצוא הדף. הדף
    * הציבורי (experience-page.tsx) לא מעביר את הפרופ הזה בכלל. */
   imagePreviewOverrides?: Record<string, string>;
+  /** Studio בלבד (Milestone D1, בחירה-על-קנבס) — undefined תמיד בדף הציבורי */
+  selected?: boolean;
+  onSelect?: (id: string) => void;
 }) {
   const mode = useExperienceMode();
   if (layer.hidden) return null;
@@ -53,7 +58,7 @@ export function ExperienceLayerRenderer({
   if (inner === null) return null;
 
   return (
-    <ExperienceTarget id={layer.id} style={style}>
+    <ExperienceTarget id={layer.id} style={style} selected={selected} onSelect={onSelect}>
       {inner}
     </ExperienceTarget>
   );
