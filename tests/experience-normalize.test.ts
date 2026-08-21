@@ -278,3 +278,99 @@ describe("normalizeExperience — clip/color (Milestone B1)", () => {
     expect(result!.scenes[0].tracks[0].props).toEqual({ opacity: [{ at: 0, value: 0 }, { at: 1, value: 1 }] });
   });
 });
+
+/**
+ * Milestone E1 (docs/rebuild-workplan.md אבן דרך E) — לפני התיקון,
+ * `normalizeTrack` פשוט לא קרא בכלל את `raw.responsive`: טיוטה שמורה/
+ * ייבוא JSON עם track.responsive.tablet/mobile היה מאבד את זה בשקט בכל
+ * round-trip, למרות ש-evaluateTrack (lib/experience-interpolate.ts) כבר
+ * ידע לצרוך את זה. ו-`hidden` הפך מ-boolean ל-Responsive<boolean>.
+ */
+describe("normalizeExperience — track.responsive + Responsive<boolean> hidden (Milestone E1)", () => {
+  it("round-trips a track's tablet/mobile keyframe overrides (previously silently dropped)", () => {
+    const raw = {
+      enabled: true,
+      scenes: [
+        {
+          id: "s1",
+          tracks: [
+            {
+              id: "t1",
+              target: "hero-title",
+              props: { y: [{ at: 0, value: 60 }, { at: 1, value: -90 }] },
+              responsive: {
+                mobile: { y: [{ at: 0, value: 30 }, { at: 1, value: -30 }] },
+              },
+            },
+          ],
+        },
+      ],
+    };
+    const result = normalizeExperience(raw);
+    expect(result!.scenes[0].tracks[0].responsive).toEqual({
+      mobile: { y: [{ at: 0, value: 30 }, { at: 1, value: -30 }] },
+    });
+  });
+
+  it("drops an invalid keyframe inside a responsive override the same way it would in props (no second validation path)", () => {
+    const raw = {
+      enabled: true,
+      scenes: [
+        {
+          id: "s1",
+          tracks: [
+            {
+              id: "t1",
+              target: "x",
+              props: { opacity: [{ at: 0, value: 0 }] },
+              responsive: { mobile: { opacity: [{ at: 0, value: "not-a-number" }] } },
+            },
+          ],
+        },
+      ],
+    };
+    const result = normalizeExperience(raw);
+    expect(result!.scenes[0].tracks[0].responsive).toBeUndefined();
+  });
+
+  it("omits `responsive` entirely (not an empty object) when there is nothing valid to carry", () => {
+    const raw = {
+      enabled: true,
+      scenes: [
+        {
+          id: "s1",
+          tracks: [{ id: "t1", target: "x", props: { opacity: [{ at: 0, value: 0 }] }, responsive: {} }],
+        },
+      ],
+    };
+    const result = normalizeExperience(raw);
+    expect(result!.scenes[0].tracks[0]).not.toHaveProperty("responsive");
+  });
+
+  it("round-trips a plain boolean `hidden` unchanged (backward compat with pre-E1 pages)", () => {
+    const raw = {
+      enabled: true,
+      scenes: [{ id: "s1", layers: [{ id: "l1", type: "text", hidden: true }] }],
+    };
+    const result = normalizeExperience(raw);
+    expect(result!.scenes[0].layers[0].hidden).toBe(true);
+  });
+
+  it("round-trips a Responsive<boolean> object form of `hidden`", () => {
+    const raw = {
+      enabled: true,
+      scenes: [{ id: "s1", layers: [{ id: "l1", type: "shape", hidden: { base: false, mobile: true } }] }],
+    };
+    const result = normalizeExperience(raw);
+    expect(result!.scenes[0].layers[0].hidden).toEqual({ base: false, mobile: true });
+  });
+
+  it("drops a malformed `hidden` value (neither boolean nor {base,...}) instead of letting it through", () => {
+    const raw = {
+      enabled: true,
+      scenes: [{ id: "s1", layers: [{ id: "l1", type: "text", hidden: "yes" }] }],
+    };
+    const result = normalizeExperience(raw);
+    expect(result!.scenes[0].layers[0]).not.toHaveProperty("hidden");
+  });
+});

@@ -28,7 +28,17 @@ if (!window.matchMedia) {
       // matchMedia במפורש (רוב הבדיקות) יתנהגו כמו בדפדפן רגיל. בדיקות
       // שכן בודקות reduced-motion/hover-capability עצמן דורסות עם
       // vi.spyOn(window, "matchMedia") משלהן, מפורשות.
-      matches: true,
+      //
+      // חריג ל"תמיד true": שאילתות max-width (Milestone E1,
+      // components/experience/use-responsive-mode.ts) -- הן היחידות
+      // שה-"true תמיד" הופך אותן ל*צר* כברירת מחדל, לא רחב. בלי החריג
+      // הזה, כל בדיקה שמרנדרת ExperienceProvider בלי mode מפורש הייתה
+      // מקבלת "mobile" בשקט (ולא "base" כמו לפני Milestone E1) פשוט כי
+      // ה-polyfill הזה לא מבחין בין שאילתות -- לא רגרסיה אמיתית (בדפדפן
+      // אמיתי getSnapshot בודק רוחב אמיתי), אבל היה הופך את כל הסוויטה
+      // לתלויה-בזהות-הטעות באופן לא מכוון. בדיקות שכן רוצות tablet/mobile
+      // דורסות עם vi.spyOn משלהן, בדיוק כמו reduced-motion/hover.
+      matches: !query.includes("max-width"),
       media: query,
       onchange: null,
       addListener: () => {},

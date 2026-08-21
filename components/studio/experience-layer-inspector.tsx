@@ -8,6 +8,7 @@ import {
   PROPERTY_METADATA,
   Z_LAYER_LABELS,
   newTrackId,
+  resolveResponsive,
   type AnimatableProp,
   type EasingId,
   type ExperienceLayer,
@@ -139,7 +140,15 @@ export function ExperienceLayerInspector({
               <SelectField label="שכבת עומק" value={layout.zIndex ?? "content"} onChange={(v) => setLayout({ zIndex: v as LayerZLayer })} options={Z_OPTIONS} />
             )}
           </PanelSection>
-          <CheckboxField label="שכבה מוסתרת (לא מרונדרת בכלל)" checked={!!layer.hidden} onChange={(v) => setLayer({ hidden: v })} />
+          {/* Milestone E1: layer.hidden הפך ל-Responsive<boolean> -- הפאנל הזה
+              עורך רק את מצב ה-base (עריכת tablet/mobile נפרדת אינה בהיקף
+              המילסטון הזה); resolveResponsive עם "base" מחזיר בדיוק את
+              ההתנהגות הקודמת כש-hidden הוא boolean רגיל. */}
+          <CheckboxField
+            label="שכבה מוסתרת (לא מרונדרת בכלל)"
+            checked={resolveResponsive(layer.hidden ?? false, "base")}
+            onChange={(v) => setLayer({ hidden: v })}
+          />
         </div>
       )}
 

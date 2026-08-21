@@ -136,3 +136,37 @@ describe("ExperienceLayerRenderer — dispatcher behavior", () => {
     expect(wrapper.style.insetInlineStart).toBe("5%");
   });
 });
+
+/**
+ * Milestone E1 — hidden הפך מ-boolean ל-Responsive<boolean> (§ proof
+ * point: "mobile סיפור מפושט" יכול להשמיט שכבה דקורטיבית-בלבד רק
+ * בנייד/טאבלט בלי לגעת ב-desktop). renderWithMode עוקף את ה-mode
+ * הכתוב-קשיח של renderLayer/ExperienceProvider (שנופל כברירת מחדל
+ * ל-useResponsiveMode() האמיתי) כדי לבדוק דטרמיניסטית את שלושת המצבים.
+ */
+describe("ExperienceLayerRenderer — Responsive<boolean> hidden (Milestone E1)", () => {
+  afterEach(cleanup);
+
+  function renderWithMode(l: ExperienceLayer, mode: "base" | "tablet" | "mobile") {
+    return render(
+      <ExperienceProvider config={undefined} mode={mode}>
+        <ExperienceLayerRenderer layer={l} />
+      </ExperienceProvider>
+    );
+  }
+
+  it("renders normally on base when hidden only overrides mobile", () => {
+    const { container } = renderWithMode(layer({ hidden: { base: false, mobile: true } }), "base");
+    expect(container.querySelector("[data-experience-target]")).toBeTruthy();
+  });
+
+  it("still renders on tablet when only mobile is overridden (falls back to base via tablet->base chain)", () => {
+    const { container } = renderWithMode(layer({ hidden: { base: false, mobile: true } }), "tablet");
+    expect(container.querySelector("[data-experience-target]")).toBeTruthy();
+  });
+
+  it("is skipped on mobile when the mobile override is true", () => {
+    const { container } = renderWithMode(layer({ hidden: { base: false, mobile: true } }), "mobile");
+    expect(container.querySelector("[data-experience-target]")).toBeNull();
+  });
+});

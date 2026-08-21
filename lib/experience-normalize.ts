@@ -80,6 +80,40 @@ function normalizeProps(raw: unknown): Partial<Record<AnimatableProp, Keyframe[]
   return out;
 }
 
+/**
+ * Milestone E1 (תיקון באג): `normalizeTrack` הישן פשוט לא קרא בכלל את
+ * `r.responsive` -- track.responsive.tablet/mobile (§14 באודיט,
+ * lib/experience-interpolate.ts evaluateTrack שכבר יודע לצרוך את זה)
+ * היה נמחק בשקט בכל round-trip דרך נירמול (טעינת טיוטה שמורה/ייבוא
+ * JSON). אותו normalizeProps בדיוק לכל תת-מצב, כדי שלא יהיה מנגנון
+ * ולידציה שני.
+ */
+function normalizeTrackResponsive(raw: unknown): ExperienceTrack["responsive"] {
+  if (typeof raw !== "object" || raw === null) return undefined;
+  const r = raw as Record<string, unknown>;
+  const tablet = normalizeProps(r.tablet);
+  const mobile = normalizeProps(r.mobile);
+  const out: NonNullable<ExperienceTrack["responsive"]> = {};
+  if (Object.keys(tablet).length > 0) out.tablet = tablet;
+  if (Object.keys(mobile).length > 0) out.mobile = mobile;
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
+/** Responsive<boolean> (Milestone E1) -- boolean גולמי (תאימות לאחור) או {base,tablet?,mobile?} */
+function normalizeResponsiveBoolean(raw: unknown): ExperienceLayer["hidden"] {
+  if (typeof raw === "boolean") return raw;
+  if (typeof raw === "object" && raw !== null) {
+    const r = raw as Record<string, unknown>;
+    if (typeof r.base === "boolean") {
+      const out: { base: boolean; tablet?: boolean; mobile?: boolean } = { base: r.base };
+      if (typeof r.tablet === "boolean") out.tablet = r.tablet;
+      if (typeof r.mobile === "boolean") out.mobile = r.mobile;
+      return out;
+    }
+  }
+  return undefined;
+}
+
 function normalizeRange(raw: unknown): [number, number] | undefined {
   if (!Array.isArray(raw) || raw.length !== 2) return undefined;
   const [a, b] = raw as unknown[];
@@ -101,6 +135,7 @@ function normalizeTrack(raw: unknown, index: number, usedIds: Set<string>): Expe
   usedIds.add(id);
 
   const range = normalizeRange(r.range);
+  const responsive = normalizeTrackResponsive(r.responsive);
 
   return {
     id,
@@ -108,6 +143,7 @@ function normalizeTrack(raw: unknown, index: number, usedIds: Set<string>): Expe
     ...(range ? { range } : {}),
     ...(typeof r.easing === "string" && EASING_IDS.has(r.easing) ? { easing: r.easing as EasingId } : {}),
     props,
+    ...(responsive ? { responsive } : {}),
   };
 }
 
@@ -123,6 +159,7 @@ function normalizeLayer(raw: unknown, index: number, usedIds: Set<string>): Expe
 
   const content = typeof r.content === "object" && r.content !== null ? r.content : {};
   const layoutRaw = typeof r.layout === "object" && r.layout !== null ? r.layout : { mode: "flow" };
+  const hidden = normalizeResponsiveBoolean(r.hidden);
 
   return {
     id,
@@ -130,7 +167,7 @@ function normalizeLayer(raw: unknown, index: number, usedIds: Set<string>): Expe
     content: content as ExperienceLayer["content"],
     layout: layoutRaw as ExperienceLayer["layout"],
     ...(typeof r.style === "object" && r.style !== null ? { style: r.style as ExperienceLayer["style"] } : {}),
-    ...(typeof r.hidden === "boolean" ? { hidden: r.hidden } : {}),
+    ...(hidden !== undefined ? { hidden } : {}),
   };
 }
 

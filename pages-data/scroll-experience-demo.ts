@@ -16,6 +16,16 @@ import type { ExperienceScene } from "@/lib/experience";
  * ImageLayer בסצנה 3 מצביע ל-SVG הקיים ב-public/globe.svg בהיעדר תמונת
  * תוכן אמיתית בריפו — מוכיח את הצנרת המלאה (alt/decorative/responsive
  * positioning), לא את איכות הנכס עצמו.
+ *
+ * Milestone E1 (docs/rebuild-workplan.md אבן דרך E) — סצנה 4 (רב-שכבתי)
+ * נושאת עכשיו tablet/mobile overrides אמיתיים: durationVh מתקצר,
+ * layout של הכותרת/הנתון עובר מדו-טור (RTL start) לערימה ממורכזת,
+ * וצורת ה-accent הדקורטיבית מוסתרת לגמרי במובייל. סצנה 1 (hero) נושאת
+ * responsive.mobile על ה-y track של הכותרת (תזוזה מרוסנת יותר). זו
+ * ההוכחה בתוכן אמיתי ש-Responsive<T> לא רק pipe ריק (§ בעיה שתועדה
+ * ב-08-16 audit כ-PARTIAL) — יחד עם use-responsive-mode.ts החדש
+ * (components/experience/) שמזין mode אמיתי מ-matchMedia בדף הציבורי,
+ * לא רק מסימולטור ה-viewport הידני של הסטודיו.
  */
 
 const heroScene: ExperienceScene = {
@@ -143,6 +153,23 @@ const heroScene: ExperienceScene = {
           { at: 0.3, value: 1 },
           { at: 1, value: 0.94 },
         ],
+      },
+      // Milestone E1: proof point ל-track.responsive (evaluateTrack,
+      // lib/experience-interpolate.ts) עם תוכן אמיתי -- לא רק בדיקת יחידה.
+      // "Mobile סיפור מפושט" (docs/rebuild-workplan.md אבן דרך E1) פירושו
+      // כאן תזוזה מרוסנת יותר: אותה כוריאוגרפיה בדיוק (אותם at, אותו כיוון),
+      // רק עם טווח y קטן משמעותית -- על מסך צר תזוזה אנכית של 90 יחידות
+      // דוחפת את הכותרת קרוב מדי לקצה, ותנועה כה גדולה מרגישה טלטלה ולא
+      // קולנועית במרחב מצומצם.
+      responsive: {
+        mobile: {
+          y: [
+            { at: 0, value: 30 },
+            { at: 0.3, value: 0 },
+            { at: 0.7, value: -12 },
+            { at: 1, value: -30 },
+          ],
+        },
       },
     },
     {
@@ -344,7 +371,11 @@ const multiLayerScene: ExperienceScene = {
   name: "רב-שכבתי",
   composition: "stage",
   pinned: true,
-  durationVh: 240,
+  // Milestone E1: proof point ל-durationVh responsive (normalizeDurationVh
+  // כבר תמך בזה קודם -- כאן תוכן אמיתי משתמש בו לראשונה). על מובייל
+  // הקומפוזיציה מתפשטת (כותרת+נתון נערמים אנכית במקום דו-טור, צורת
+  // ה-accent מוסתרת) -- פחות כוריאוגרפיה בו-זמנית = פחות מרחק גלילה נדרש.
+  durationVh: { base: 240, tablet: 220, mobile: 180 },
   background: { color: "surface" },
   transition: "fade",
   layers: [
@@ -366,14 +397,28 @@ const multiLayerScene: ExperienceScene = {
       id: "demo-multi-title",
       type: "text",
       content: { text: "כמה שכבות, סנכרון אחד", tag: "h2" },
-      layout: { mode: "stage", x: "30%", y: "35%", width: "20rem", anchor: "start", zIndex: "content" },
+      // Milestone E1: proof point ל-Responsive<LayerLayout> עם תוכן אמיתי --
+      // desktop/tablet: טור טקסט בצד ימין (RTL start) מול הצורות בצד שני.
+      // mobile: הקומפוזיציה הדו-טורית לא נכנסת ברוחב צר -- x/anchor עוברים
+      // למרכז, width הופך מ-rem קשיח ל-vw יחסי. "Mobile סיפור מפושט"
+      // (docs/rebuild-workplan.md E1) הלכה למעשה, לא רק תיאור.
+      layout: {
+        base: { mode: "stage", x: "30%", y: "35%", width: "20rem", anchor: "start", zIndex: "content" },
+        // x מושמט בכוונה: anchor:"center"+width ממרכז דרך inset מלא +
+        // margin-inline:auto (layerLayoutStyle, lib/experience.ts §12.4) --
+        // x לא נצרך בכלל בנתיב הזה, השארתו הייתה קוד מת מטעה.
+        mobile: { mode: "stage", y: "32%", width: "min(82vw, 20rem)", anchor: "center", zIndex: "content" },
+      },
       style: { color: "background" },
     },
     {
       id: "demo-multi-stat",
       type: "text",
       content: { text: "0 setState בלולאת הגלילה", tag: "p" },
-      layout: { mode: "stage", x: "30%", y: "48%", width: "18rem", anchor: "start", zIndex: "content" },
+      layout: {
+        base: { mode: "stage", x: "30%", y: "48%", width: "18rem", anchor: "start", zIndex: "content" },
+        mobile: { mode: "stage", y: "46%", width: "min(78vw, 18rem)", anchor: "center", zIndex: "content" },
+      },
       style: { color: "accent" },
     },
     {
@@ -382,6 +427,11 @@ const multiLayerScene: ExperienceScene = {
       content: { shape: "circle" },
       layout: { mode: "stage", x: "72%", y: "42%", width: "10rem", anchor: "center", zIndex: "foreground" },
       style: { background: "accent" },
+      // Milestone E1: proof point ל-hidden כ-Responsive<boolean> (היה boolean
+      // קשיח). הצורה כאן דקורטיבית-בלבד (אין track שכותב אליה תוכן, רק
+      // rotate/opacity) -- "סיפור מפושט" במובייל אומר להשמיט אותה לגמרי
+      // במקום לדחוס אותה למרחב הצר יחד עם הכותרת/הנתון.
+      hidden: { base: false, mobile: true },
     },
   ],
   tracks: [
