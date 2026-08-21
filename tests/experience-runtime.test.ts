@@ -153,7 +153,12 @@ describe("ExperienceRuntime — end to end wiring", () => {
     runtime.detach();
   });
 
-  it('settings.performance="lite" skips writing expensive properties (blur) but still writes cheap ones (opacity) -- §19 DoD "מובייל מבוקר במכוון, לא רק scaled-down"', async () => {
+  it('settings.performance="lite" skips writing expensive properties (blur, clip) but still writes cheap ones (opacity, color) -- §19 DoD "מובייל מבוקר במכוון, לא רק scaled-down"', async () => {
+    // Milestone E3: clip קיבל את אותו performanceClass:"expensive" כמו blur
+    // כבר ב-Milestone B (lib/experience.ts PROPERTY_METADATA) -- כאן ההוכחה
+    // בפועל שהמנגנון הגנרי ב-runtime (לא רק בדיקת blur ספציפית) באמת מדלג
+    // עליו תחת "lite", ושה-color (cheap, אינטרפולציית mixHex בלבד -- אין
+    // clip/blur GPU raster) נשאר פעיל לצידו.
     const runtime = new ExperienceRuntime(
       config({
         enabled: true,
@@ -174,6 +179,8 @@ describe("ExperienceRuntime — end to end wiring", () => {
                 props: {
                   opacity: [{ at: 0, value: 0 }, { at: 1, value: 1 }],
                   blur: [{ at: 0, value: 0 }, { at: 1, value: 20 }],
+                  clip: [{ at: 0, value: 0 }, { at: 1, value: 1 }],
+                  color: [{ at: 0, value: "#000000" }, { at: 1, value: "#FFFFFF" }],
                 },
               },
             ],
@@ -196,6 +203,8 @@ describe("ExperienceRuntime — end to end wiring", () => {
 
     expect(titleEl.style.getPropertyValue("--exp-opacity")).toBe("0.5"); // cheap -- still written
     expect(titleEl.style.getPropertyValue("--exp-blur")).toBe(""); // expensive -- skipped under "lite"
+    expect(titleEl.style.getPropertyValue("--exp-clip")).toBe(""); // expensive -- skipped under "lite"
+    expect(titleEl.style.getPropertyValue("--exp-color")).not.toBe(""); // cheap -- still written
     runtime.detach();
   });
 
