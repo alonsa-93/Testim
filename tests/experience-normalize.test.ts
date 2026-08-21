@@ -374,3 +374,92 @@ describe("normalizeExperience — track.responsive + Responsive<boolean> hidden 
     expect(result!.scenes[0].layers[0]).not.toHaveProperty("hidden");
   });
 });
+
+/**
+ * Milestone H (ביקורת מבקר-אדברסריאלי, ממצא #1 -- XSS חמור): עד כה
+ * layer.content עבר דרך cast גורף בלי שום ולידציה על השדות שבפנים.
+ * text-layer.tsx מרנדר `<Tag>{content.text}</Tag>` עם content.tag
+ * כטיפוס-אלמנט React דינמי -- tag="script" לא-מאומת גורם ל-React
+ * ל-createElement("script") *אמיתי* שמבוצע בפועל כשהוא מוכנס ל-DOM
+ * (בשונה מ-innerHTML, ששם script לעולם לא רץ). נתיב ייבוא אמיתי
+ * וקיים: components/studio/studio-app.tsx importJson -> JSON.parse
+ * -> normalizePage -> normalizeExperience -> normalizeLayer, מרונדר
+ * מיד בתצוגה החיה של הסטודיו.
+ */
+describe("normalizeExperience — layer content validation, XSS hardening (Milestone H)", () => {
+  it("rejects a malicious text layer tag (e.g. \"script\") and falls back to a safe default", () => {
+    const raw = {
+      enabled: true,
+      scenes: [{ id: "s1", layers: [{ id: "l1", type: "text", content: { text: "gotcha", tag: "script" } }] }],
+    };
+    const result = normalizeExperience(raw);
+    const content = result!.scenes[0].layers[0].content as { tag: string; text: string };
+    expect(content.tag).toBe("p");
+    expect(content.text).toBe("gotcha"); // text itself is inert data, not the vulnerable field -- preserved
+  });
+
+  it("accepts every real text tag in the allow-list unchanged", () => {
+    for (const tag of ["h1", "h2", "h3", "h4", "p", "span"]) {
+      const raw = { enabled: true, scenes: [{ id: "s1", layers: [{ id: "l1", type: "text", content: { text: "x", tag } }] }] };
+      const result = normalizeExperience(raw);
+      expect((result!.scenes[0].layers[0].content as { tag: string }).tag).toBe(tag);
+    }
+  });
+
+  it("defaults a missing/non-string tag to \"p\" instead of leaving it undefined", () => {
+    const raw = { enabled: true, scenes: [{ id: "s1", layers: [{ id: "l1", type: "text", content: { text: "x" } }] }] };
+    const result = normalizeExperience(raw);
+    expect((result!.scenes[0].layers[0].content as { tag: string }).tag).toBe("p");
+  });
+
+  it("neutralizes a javascript: URI on a button layer's href to a safe inert anchor", () => {
+    const raw = {
+      enabled: true,
+      scenes: [{ id: "s1", layers: [{ id: "l1", type: "button", content: { label: "click", href: "javascript:alert(1)" } }] }],
+    };
+    const result = normalizeExperience(raw);
+    const content = result!.scenes[0].layers[0].content as { href: string };
+    expect(content.href).toBe("#");
+  });
+
+  it("neutralizes a data: URI on a button layer's href", () => {
+    const raw = {
+      enabled: true,
+      scenes: [{ id: "s1", layers: [{ id: "l1", type: "button", content: { label: "click", href: "data:text/html,<script>alert(1)</script>" } }] }],
+    };
+    const result = normalizeExperience(raw);
+    expect((result!.scenes[0].layers[0].content as { href: string }).href).toBe("#");
+  });
+
+  it("accepts real-world safe hrefs unchanged: https, mailto, tel, #anchor, relative path", () => {
+    for (const href of ["https://example.com", "http://example.com/page", "mailto:x@example.com", "tel:+15551234567", "#section", "/local-page", "relative/path"]) {
+      const raw = { enabled: true, scenes: [{ id: "s1", layers: [{ id: "l1", type: "button", content: { label: "x", href } }] }] };
+      const result = normalizeExperience(raw);
+      expect((result!.scenes[0].layers[0].content as { href: string }).href).toBe(href);
+    }
+  });
+
+  it("rejects an invalid/malformed button variant instead of passing it through unchecked", () => {
+    const raw = {
+      enabled: true,
+      scenes: [{ id: "s1", layers: [{ id: "l1", type: "button", content: { label: "x", href: "#", variant: "<img onerror=alert(1)>" } }] }],
+    };
+    const result = normalizeExperience(raw);
+    expect(result!.scenes[0].layers[0].content).not.toHaveProperty("variant");
+  });
+
+  it("rejects an invalid shape kind and falls back to a safe default", () => {
+    const raw = { enabled: true, scenes: [{ id: "s1", layers: [{ id: "l1", type: "shape", content: { shape: "nonsense" } }] }] };
+    const result = normalizeExperience(raw);
+    expect((result!.scenes[0].layers[0].content as { shape: string }).shape).toBe("circle");
+  });
+
+  it("coerces non-string text/label/blockId fields to safe empty strings instead of leaking non-string values through", () => {
+    const raw = {
+      enabled: true,
+      scenes: [{ id: "s1", layers: [{ id: "l1", type: "text", content: { text: 12345, tag: "p" } }] }],
+    };
+    const result = normalizeExperience(raw);
+    expect((result!.scenes[0].layers[0].content as { text: string }).text).toBe("");
+  });
+});

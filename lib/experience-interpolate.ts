@@ -149,7 +149,25 @@ export function trackLocalProgress(track: ExperienceTrack, sceneProgress: number
  * אם קיים למצב הנוכחי. מחזיר רק את המאפיינים שה-track הזה בפועל כותב
  * אליהם — ה-caller (runtime, Phase 2) אחראי למזג עם ברירות מחדל
  * (--exp-* fallback ב-CSS כבר עושה את זה, ראו §8 באודיט).
+ *
+ * Milestone H (ביקורת מבקר-אדברסריאלי, ממצא #4): נופל mobile→tablet→base
+ * -- בדיוק אותה "נפילה חכמה" ש-resolveResponsive (lib/experience.ts)
+ * כבר מתעד ומיישם לכל שדה Responsive<T> אחר (durationVh/layout/hidden).
+ * לפני התיקון, mode="mobile" עם רק track.responsive.tablet מוגדר (בלי
+ * override ל-mobile עצמו) היה נופל ישר ל-track.props (עקומת ה-desktop),
+ * מדלג בשקט על ה-override של tablet שמחבר track היה מצפה לרשת ממנו --
+ * חוסר-עקביות עם כל שאר המערכת, לא החלטת עיצוב מכוונת.
  */
+function resolveTrackKeyframes(track: ExperienceTrack, prop: AnimatableProp, mode: ResponsiveMode) {
+  if (mode === "mobile") {
+    return track.responsive?.mobile?.[prop] ?? track.responsive?.tablet?.[prop] ?? track.props[prop];
+  }
+  if (mode === "tablet") {
+    return track.responsive?.tablet?.[prop] ?? track.props[prop];
+  }
+  return track.props[prop];
+}
+
 export function evaluateTrack(
   track: ExperienceTrack,
   sceneProgress: number,
@@ -161,9 +179,7 @@ export function evaluateTrack(
   const result: Partial<Record<AnimatableProp, number | string>> = {};
 
   for (const prop of Object.keys(track.props) as AnimatableProp[]) {
-    const responsiveOverride =
-      mode !== "base" ? track.responsive?.[mode]?.[prop] : undefined;
-    const keyframes = responsiveOverride ?? track.props[prop];
+    const keyframes = resolveTrackKeyframes(track, prop, mode);
     if (!keyframes || keyframes.length === 0) continue;
     const value = evaluateKeyframes(keyframes, localProgress, easing);
     if (value !== undefined) result[prop] = value;

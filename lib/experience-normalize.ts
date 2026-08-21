@@ -1,5 +1,6 @@
 import type {
   AnimatableProp,
+  ButtonLayerContent,
   EasingId,
   ExperienceConfig,
   ExperienceLayer,
@@ -8,6 +9,8 @@ import type {
   ExperienceTrack,
   Keyframe,
   LayerType,
+  ShapeLayerContent,
+  TextLayerContent,
 } from "./experience";
 
 /**
@@ -31,6 +34,10 @@ const ANIMATABLE_PROPS: ReadonlySet<string> = new Set(["opacity", "x", "y", "sca
 const HEX_COLOR_RE = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
 const COMPOSITIONS: ReadonlySet<string> = new Set(["stage", "flow"]);
 const TRANSITIONS: ReadonlySet<string> = new Set(["cut", "fade", "crossfade", "directional"]);
+const TEXT_TAGS: ReadonlySet<string> = new Set(["h1", "h2", "h3", "h4", "p", "span"]);
+const BUTTON_VARIANTS: ReadonlySet<string> = new Set(["primary", "outline", "ghost", "inverted"]);
+const SHAPE_KINDS: ReadonlySet<string> = new Set(["circle", "blob", "rect"]);
+const SAFE_HREF_SCHEMES: ReadonlySet<string> = new Set(["http:", "https:", "mailto:", "tel:"]);
 
 const clamp01 = (n: number) => Math.min(1, Math.max(0, n));
 
@@ -147,6 +154,70 @@ function normalizeTrack(raw: unknown, index: number, usedIds: Set<string>): Expe
   };
 }
 
+/**
+ * Milestone H (ביקורת מבקר-אדברסריאלי, ממצא #1 — XSS חמור): מונע ניווט
+ * ל-scheme לא בטוח (javascript:/data:/vbscript:...) בשדה href. מקבל
+ * יחסי/עוגן (בלי scheme בכלל, או שמתחיל ב-# או /) וגם http/https/
+ * mailto/tel מפורשים -- דוחה כל דבר אחר. אי-אפשר "ל-throw ולתפוס" עם
+ * URL תקין-חלקית, לכן try/catch שנופל ל-false (=לא בטוח) בכל כשל פענוח.
+ */
+function isSafeHref(href: string): boolean {
+  if (href.startsWith("#") || href.startsWith("/")) return true;
+  if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(href)) return true; // אין scheme בכלל -- נתיב יחסי
+  try {
+    return SAFE_HREF_SCHEMES.has(new URL(href, "https://example.com").protocol);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Milestone H (ביקורת מבקר-אדברסריאלי, ממצא #1/#2) — עד כה content
+ * עבר דרך cast גורף (`content as ExperienceLayer["content"]`) בלי שום
+ * ולידציה על השדות שבפנים, למרות שזה בדיוק אותו trust boundary
+ * (ייבוא JSON / טיוטה ישנה מ-localStorage) שכל שדה אחר בקובץ הזה כן
+ * מאמת. הפער החמור ביותר: TextLayer מרנדר `<Tag>` עם content.tag
+ * כטיפוס-אלמנט React דינמי (components/experience/layers/text-layer.tsx)
+ * -- tag="script" לא-מאומת גורם ל-React ל-createElement("script") אמיתי
+ * שמבוצע בפועל כשהוא מוכנס ל-DOM (בשונה מ-innerHTML, ששם script לעולם
+ * לא רץ). content.href על button layer עבר גם הוא בלי סינון scheme,
+ * ומאפשר javascript: URI בקישור אמיתי. שתי הבעיות נסגרות כאן יחד, לפי
+ * type -- לא שני מנגנוני ולידציה נפרדים, ואותו דפוס allow-list בדיוק
+ * שכל שדה enum אחר בקובץ הזה (EASING_IDS/LAYER_TYPES/...) כבר משתמש בו.
+ */
+function normalizeLayerContent(type: LayerType, raw: unknown): ExperienceLayer["content"] {
+  const r = (typeof raw === "object" && raw !== null ? raw : {}) as Record<string, unknown>;
+  switch (type) {
+    case "text":
+      return {
+        text: typeof r.text === "string" ? r.text : "",
+        tag: typeof r.tag === "string" && TEXT_TAGS.has(r.tag) ? (r.tag as TextLayerContent["tag"]) : "p",
+      };
+    case "button": {
+      const hrefRaw = typeof r.href === "string" ? r.href : "#";
+      return {
+        label: typeof r.label === "string" ? r.label : "",
+        href: isSafeHref(hrefRaw) ? hrefRaw : "#",
+        ...(typeof r.variant === "string" && BUTTON_VARIANTS.has(r.variant)
+          ? { variant: r.variant as ButtonLayerContent["variant"] }
+          : {}),
+      };
+    }
+    case "shape":
+      return {
+        shape: typeof r.shape === "string" && SHAPE_KINDS.has(r.shape) ? (r.shape as ShapeLayerContent["shape"]) : "circle",
+      };
+    case "image":
+      return {
+        src: typeof r.src === "string" ? r.src : "",
+        alt: typeof r.alt === "string" ? r.alt : "",
+        ...(typeof r.decorative === "boolean" ? { decorative: r.decorative } : {}),
+      };
+    case "block":
+      return { blockId: typeof r.blockId === "string" ? r.blockId : "" };
+  }
+}
+
 function normalizeLayer(raw: unknown, index: number, usedIds: Set<string>): ExperienceLayer | null {
   if (typeof raw !== "object" || raw === null) return null;
   const r = raw as Record<string, unknown>;
@@ -157,14 +228,14 @@ function normalizeLayer(raw: unknown, index: number, usedIds: Set<string>): Expe
   while (usedIds.has(id)) id = `${id}-2`;
   usedIds.add(id);
 
-  const content = typeof r.content === "object" && r.content !== null ? r.content : {};
+  const content = normalizeLayerContent(type, r.content);
   const layoutRaw = typeof r.layout === "object" && r.layout !== null ? r.layout : { mode: "flow" };
   const hidden = normalizeResponsiveBoolean(r.hidden);
 
   return {
     id,
     type,
-    content: content as ExperienceLayer["content"],
+    content,
     layout: layoutRaw as ExperienceLayer["layout"],
     ...(typeof r.style === "object" && r.style !== null ? { style: r.style as ExperienceLayer["style"] } : {}),
     ...(hidden !== undefined ? { hidden } : {}),

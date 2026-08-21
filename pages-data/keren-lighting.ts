@@ -1,5 +1,5 @@
 import type { Page } from "@/lib/page";
-import type { ExperienceScene } from "@/lib/experience";
+import type { ExperienceScene, ExperienceTrack } from "@/lib/experience";
 import { parallaxDepthTrack, parallaxTrack } from "@/lib/experience-presets";
 
 /**
@@ -33,6 +33,16 @@ import { parallaxDepthTrack, parallaxTrack } from "@/lib/experience-presets";
  * להילחם בפלטה הקרירה שלה: התוכן כאן ממוסגר כתאורה אדריכלית מדויקת/
  * קרירה, לא חמה-כפרית, כך שהפלטה משרתת את הזהות במקום לסתור אותה.
  */
+
+// Milestone H (ביקורת מבקר-אדברסריאלי, ממצא #6): מחושב פעם אחת, לא
+// פעמיים עם אותם ארגומנטים בדיוק (fadeUpClipTrack ב-lib/experience-presets.ts
+// כבר עושה את זה נכון -- כאן זה היה הסטייה, לא הכלל).
+const kerenGlowBase = parallaxDepthTrack("keren-glow", 0.3, { easing: "soft", peakOpacity: 0.5, blurPx: 60 });
+const kerenGlowTrack: ExperienceTrack = {
+  ...kerenGlowBase,
+  id: "keren-glow-track",
+  props: { ...kerenGlowBase.props, rotate: [{ at: 0, value: 0 }, { at: 1, value: 25 }] },
+};
 
 const heroScene: ExperienceScene = {
   id: "keren-hero",
@@ -128,17 +138,10 @@ const heroScene: ExperienceScene = {
         opacity: [{ at: 0, value: 0 }, { at: 0.08, value: 0.6 }, { at: 0.18, value: 0 }],
       },
     },
-    {
-      // Milestone F2/G: שימוש ישיר ב-parallaxDepthTrack המיוצא --
-      // ההוכחה שהפרימיטיב הזה משרת גם דף אמיתי, לא רק presets.
-      // factor נמוך (0.3) = "מקור אור רחוק", לא זז חד יחסית לגלילה.
-      ...parallaxDepthTrack("keren-glow", 0.3, { easing: "soft", peakOpacity: 0.5, blurPx: 60 }),
-      id: "keren-glow-track",
-      props: {
-        ...parallaxDepthTrack("keren-glow", 0.3, { easing: "soft", peakOpacity: 0.5, blurPx: 60 }).props,
-        rotate: [{ at: 0, value: 0 }, { at: 1, value: 25 }],
-      },
-    },
+    // Milestone F2/G: שימוש ישיר ב-parallaxDepthTrack המיוצא --
+    // ההוכחה שהפרימיטיב הזה משרת גם דף אמיתי, לא רק presets.
+    // factor נמוך (0.3) = "מקור אור רחוק", לא זז חד יחסית לגלילה.
+    kerenGlowTrack,
   ],
 };
 
@@ -191,6 +194,30 @@ const craftScene: ExperienceScene = {
   ],
 };
 
+// Milestone H (ביקורת מבקר-אדברסריאלי, ממצא #6): שני ה-tracks הבאים
+// מחושבים פעם אחת כל אחד, לא פעמיים עם אותם ארגומנטים.
+const kerenRevealBackBase = parallaxTrack("keren-reveal-shape-back", 0.15, { easing: "linear", travelPercent: 20 });
+const kerenRevealBackTrack: ExperienceTrack = {
+  ...kerenRevealBackBase,
+  id: "keren-reveal-back-track",
+  props: {
+    ...kerenRevealBackBase.props,
+    opacity: [{ at: 0, value: 0 }, { at: 0.2, value: 1 }, { at: 0.85, value: 1 }, { at: 1, value: 0 }],
+  },
+};
+const kerenRevealMidBase = parallaxTrack("keren-reveal-shape-mid", 0.6, { easing: "linear", travelPercent: 20 });
+const kerenRevealMidTrack: ExperienceTrack = {
+  ...kerenRevealMidBase,
+  id: "keren-reveal-mid-track",
+  props: {
+    ...kerenRevealMidBase.props,
+    opacity: [{ at: 0.15, value: 0 }, { at: 0.35, value: 1 }, { at: 0.85, value: 1 }, { at: 1, value: 0 }],
+    scale: [{ at: 0.15, value: 0.8 }, { at: 0.35, value: 1 }, { at: 1, value: 1.08 }],
+    // האור "נדלק": מ-muted (כבוי) ל-accent (דולק) -- הצבע הוא חלק מהסיפור, לא רק תנועה.
+    color: [{ at: 0.15, value: "#5A72B8" }, { at: 0.5, value: "#22D3EE" }],
+  },
+};
+
 const revealScene: ExperienceScene = {
   id: "keren-reveal",
   name: "גילוי — צורה שממשיכה את האור",
@@ -240,30 +267,12 @@ const revealScene: ExperienceScene = {
       easing: "soft",
       props: { opacity: [{ at: 0.05, value: 0 }, { at: 0.25, value: 1 }, { at: 0.8, value: 1 }, { at: 0.95, value: 0 }] },
     },
-    {
-      // "far" layer -- קרוב לגמרי, נע מעט מאוד (רקע-תוך-רקע)
-      ...parallaxTrack("keren-reveal-shape-back", 0.15, { easing: "linear", travelPercent: 20 }),
-      id: "keren-reveal-back-track",
-      props: {
-        ...parallaxTrack("keren-reveal-shape-back", 0.15, { travelPercent: 20 }).props,
-        opacity: [{ at: 0, value: 0 }, { at: 0.2, value: 1 }, { at: 0.85, value: 1 }, { at: 1, value: 0 }],
-      },
-    },
-    {
-      // "near" layer -- זזה מהר יותר מהרקע (יחס מהירות אחר, אותה סצנה,
-      // אותו progress) -- זו בדיוק ה-parallax שהטבלה בסעיף 4 של
-      // docs/reference-experience-analysis.md זיהתה כחסרת helper.
-      ...parallaxTrack("keren-reveal-shape-mid", 0.6, { easing: "linear", travelPercent: 20 }),
-      id: "keren-reveal-mid-track",
-      props: {
-        ...parallaxTrack("keren-reveal-shape-mid", 0.6, { travelPercent: 20 }).props,
-        opacity: [{ at: 0.15, value: 0 }, { at: 0.35, value: 1 }, { at: 0.85, value: 1 }, { at: 1, value: 0 }],
-        scale: [{ at: 0.15, value: 0.8 }, { at: 0.35, value: 1 }, { at: 1, value: 1.08 }],
-        // האור "נדלק": מ-muted (כבוי) ל-accent (דולק) -- הצבע הוא חלק
-        // מהסיפור, לא רק תנועה.
-        color: [{ at: 0.15, value: "#5A72B8" }, { at: 0.5, value: "#22D3EE" }],
-      },
-    },
+    // "far" layer -- קרוב לגמרי, נע מעט מאוד (רקע-תוך-רקע)
+    kerenRevealBackTrack,
+    // "near" layer -- זזה מהר יותר מהרקע (יחס מהירות אחר, אותה סצנה,
+    // אותו progress) -- זו בדיוק ה-parallax שהטבלה בסעיף 4 של
+    // docs/reference-experience-analysis.md זיהתה כחסרת helper.
+    kerenRevealMidTrack,
     {
       id: "keren-reveal-title-track",
       target: "keren-reveal-title",

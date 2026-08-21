@@ -92,6 +92,43 @@ describe("ExperienceProvider", () => {
     expect(addSpy).toHaveBeenCalledWith("scroll", expect.any(Function), { passive: true });
   });
 
+  /**
+   * Milestone H (ביקורת מבקר-אדברסריאלי, ממצא #5): runtime.updateMode
+   * כבר רץ סינכרונית בגוף ה-render, *לפני* שה-attach effect בכלל
+   * מופעל -- אז resolvedMode לא צריך (ולא אמור) להיות ברשימת התלויות
+   * של אותו effect. לפני התיקון, מעבר breakpoint (mode prop משתנה) היה
+   * מפרק ומחבר מחדש את כל מאזין הגלילה בלי שום תועלת מתאמת. הבדיקה
+   * הזו הייתה נכשלת לפני התיקון (detach+attach שני היה קורה).
+   */
+  it("does not tear down and re-attach the scroll listener when only `mode` changes (Milestone H fix)", () => {
+    class FakeMQL extends EventTarget {
+      matches = true;
+    }
+    vi.spyOn(window, "matchMedia").mockReturnValue(new FakeMQL() as unknown as MediaQueryList);
+    const addSpy = vi.spyOn(window, "addEventListener");
+    const removeSpy = vi.spyOn(window, "removeEventListener");
+    const config = { ...emptyExperience(), enabled: true };
+
+    const { rerender } = render(
+      <ExperienceProvider config={config} mode="base">
+        <div>content</div>
+      </ExperienceProvider>
+    );
+    const scrollAttachesBefore = addSpy.mock.calls.filter((c) => c[0] === "scroll").length;
+    expect(scrollAttachesBefore).toBe(1);
+
+    rerender(
+      <ExperienceProvider config={config} mode="tablet">
+        <div>content</div>
+      </ExperienceProvider>
+    );
+
+    const scrollAttachesAfter = addSpy.mock.calls.filter((c) => c[0] === "scroll").length;
+    const scrollDetaches = removeSpy.mock.calls.filter((c) => c[0] === "scroll").length;
+    expect(scrollAttachesAfter).toBe(1); // no second attach
+    expect(scrollDetaches).toBe(0); // no detach at all -- the mode change alone must not touch the listener
+  });
+
   it("survives a full remount (studio replayKey pattern) without leaking or throwing", () => {
     class FakeMQL extends EventTarget {
       matches = true;

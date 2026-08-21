@@ -176,6 +176,49 @@ describe("evaluateTrack — full resolution with responsive overrides", () => {
     const result = evaluateTrack(track, 0.5, "linear");
     expect(Object.keys(result)).toEqual(["scale"]);
   });
+
+  /**
+   * Milestone H (ביקורת מבקר-אדברסריאלי, ממצא #4): mode="mobile" עם רק
+   * override ל-tablet מוגדר (בלי override ל-mobile עצמו) חייב לרשת את
+   * ה-tablet override -- בדיוק כמו שresolveResponsive (lib/experience.ts)
+   * כבר מתעד ומיישם ("נפילה חכמה" mobile->tablet->base) לכל שדה
+   * Responsive<T> אחר. לפני התיקון זה היה נופל ישר ל-track.props (עקומת
+   * ה-desktop), מדלג בשקט על ה-tablet override.
+   */
+  it("cascades mobile -> tablet -> base: mode=mobile with only a tablet override inherits the tablet curve", () => {
+    const track: ExperienceTrack = {
+      id: "t1",
+      target: "hero-title",
+      props: { x: [{ at: 0, value: 0 }, { at: 1, value: 100 }] },
+      responsive: { tablet: { x: [{ at: 0, value: 0 }, { at: 1, value: 50 }] } },
+    };
+    expect(evaluateTrack(track, 1, "linear", "base").x).toBe(100);
+    expect(evaluateTrack(track, 1, "linear", "tablet").x).toBe(50);
+    expect(evaluateTrack(track, 1, "linear", "mobile").x).toBe(50); // inherits tablet, not base
+  });
+
+  it("still prefers an explicit mobile override over an also-present tablet override", () => {
+    const track: ExperienceTrack = {
+      id: "t1",
+      target: "hero-title",
+      props: { x: [{ at: 0, value: 0 }, { at: 1, value: 100 }] },
+      responsive: {
+        tablet: { x: [{ at: 0, value: 0 }, { at: 1, value: 50 }] },
+        mobile: { x: [{ at: 0, value: 0 }, { at: 1, value: 10 }] },
+      },
+    };
+    expect(evaluateTrack(track, 1, "linear", "mobile").x).toBe(10);
+  });
+
+  it("tablet mode never inherits a mobile-only override (cascade is one-directional: mobile can borrow from tablet, not the reverse)", () => {
+    const track: ExperienceTrack = {
+      id: "t1",
+      target: "hero-title",
+      props: { x: [{ at: 0, value: 0 }, { at: 1, value: 100 }] },
+      responsive: { mobile: { x: [{ at: 0, value: 0 }, { at: 1, value: 10 }] } },
+    };
+    expect(evaluateTrack(track, 1, "linear", "tablet").x).toBe(100); // falls to base, not the mobile override
+  });
 });
 
 /**
