@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { EXPERIENCE_PRESETS, instantiatePresetScene } from "@/lib/experience-presets";
+import { EXPERIENCE_PRESETS, instantiatePresetScene, parallaxTrack } from "@/lib/experience-presets";
 import { validateScene, type ExperienceValidationIssue } from "@/lib/experience-validate";
 import type { ExperienceLayer, ExperienceScene, ExperienceTrack } from "@/lib/experience";
 
@@ -90,5 +90,79 @@ describe("instantiatePresetScene", () => {
   it("passes through an empty preset (no layers/tracks) without throwing", () => {
     expect(() => instantiatePresetScene({}, [], [])).not.toThrow();
     expect(instantiatePresetScene({}, [], [])).toEqual({ layers: [], tracks: [] });
+  });
+});
+
+/**
+ * Milestone F2 (docs/rebuild-workplan.md אבן דרך F2, "עדכון ששת ה-
+ * presets הקיימים לרף החדש") — הוכחה שהעדכון בפועל קרה, לא רק תיעוד:
+ * durationVh רספונסיבי בחמשת ה-presets המוצמדים, digital מקבל clip,
+ * luxury מקבל שכבת עומק עם parallax.
+ */
+describe("EXPERIENCE_PRESETS — Milestone F2 quality-bar updates", () => {
+  it("every pinned (stage) preset has a real tablet/mobile durationVh override, not a flat number", () => {
+    for (const preset of EXPERIENCE_PRESETS) {
+      if (preset.scene.composition !== "stage") continue; // editorial (flow) intentionally excluded -- durationVh isn't consumed for flow height
+      const duration = preset.scene.durationVh;
+      expect(typeof duration, `${preset.id}: durationVh should be Responsive<number>, not a flat number`).toBe("object");
+      const d = duration as { base: number; tablet?: number; mobile?: number };
+      expect(d.mobile, `${preset.id}: missing a real mobile override`).toBeLessThan(d.base);
+      expect(d.tablet, `${preset.id}: missing a real tablet override`).toBeLessThan(d.base);
+    }
+  });
+
+  it('"digital" reveals its title with a clip wipe in the same 0->0.15 entrance window as opacity/y', () => {
+    const digital = EXPERIENCE_PRESETS.find((p) => p.id === "digital")!;
+    const track = digital.scene.tracks?.[0];
+    expect(track?.props.clip).toEqual([{ at: 0, value: 0 }, { at: 0.15, value: 1 }]);
+  });
+
+  it('"luxury" carries a second, low-opacity parallax depth layer distinct from the title', () => {
+    const luxury = EXPERIENCE_PRESETS.find((p) => p.id === "luxury")!;
+    expect(luxury.scene.layers).toHaveLength(2);
+    const depthTrack = luxury.scene.tracks?.find((t) => t.target === "preset-luxury-depth");
+    expect(depthTrack).toBeDefined();
+    // Peak opacity stays restrained (§0 principle 2: decorative = subtle, not competing with the title)
+    const peaks = depthTrack!.props.opacity!.map((k) => k.value as number);
+    expect(Math.max(...peaks)).toBeLessThanOrEqual(0.4);
+  });
+});
+
+/**
+ * Milestone F2 — parallaxTrack, the primitive itself (docs/reference-
+ * experience-analysis.md §4: "אין helper ייעודי ל'יחס מהירות'"). Exported
+ * (unlike the other preset-internal helpers here) because a "speed ratio"
+ * primitive is exactly the kind of reusable building block worth a real
+ * public contract, not just internal preset plumbing.
+ */
+describe("parallaxTrack (Milestone F2 primitive)", () => {
+  it("factor=0 means frozen -- no travel at all", () => {
+    const track = parallaxTrack("t", 0);
+    expect(track.props.y).toEqual([{ at: 0, value: 0 }, { at: 1, value: 0 }]);
+  });
+
+  it("factor scales travel distance linearly (0.5x factor = half the travel of 1x)", () => {
+    const full = parallaxTrack("t", 1, { travelPercent: 40 });
+    const half = parallaxTrack("t", 0.5, { travelPercent: 40 });
+    const fullTravel = (full.props.y![0].value as number) - (full.props.y![1].value as number);
+    const halfTravel = (half.props.y![0].value as number) - (half.props.y![1].value as number);
+    expect(halfTravel).toBeCloseTo(fullTravel / 2);
+  });
+
+  it("a negative factor reverses travel direction", () => {
+    const positive = parallaxTrack("t", 1, { travelPercent: 40 });
+    const negative = parallaxTrack("t", -1, { travelPercent: 40 });
+    expect(negative.props.y![0].value).toBe(-(positive.props.y![0].value as number));
+  });
+
+  it("moves from +travel to -travel across the scene (starts below baseline, ends above -- reads as parallax, not a one-way drift)", () => {
+    const track = parallaxTrack("t", 1, { travelPercent: 40 });
+    expect(track.props.y![0].value).toBe(40);
+    expect(track.props.y![1].value).toBe(-40);
+  });
+
+  it("defaults to linear easing (parallax should track scroll 1:1, not ease in/out)", () => {
+    const track = parallaxTrack("t", 0.5);
+    expect(track.easing).toBe("linear");
   });
 });
