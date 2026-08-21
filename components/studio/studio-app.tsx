@@ -1221,7 +1221,7 @@ export function StudioApp() {
                     {page.name} · {theme.name}
                   </span>
                 </div>
-                <ThemeScope key={replayKey} theme={theme} className="[transform:translateZ(0)]" motionOff={typing}>
+                <ThemeScope key={replayKey} theme={theme} className="[transform:translateZ(0)]" motionOff={typing} suppressFx>
                   {page.experience.scenes.length > 0 ? (
                     <ExperienceLivePreview
                       page={page}
