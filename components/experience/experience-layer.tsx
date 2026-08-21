@@ -54,6 +54,15 @@ export function ExperienceLayerRenderer({
 
   const layout = resolveResponsive(layer.layout, mode);
   const style = layerLayoutStyle(layout) as CSSProperties;
+  // Milestone G (docs/rebuild-workplan.md אבן דרך G) -- ראו LayerLayout.height
+  // ב-lib/experience.ts להסבר המלא. ExperienceTarget הוא absolute+width
+  // בלי height ב-stage mode; ShapeLayer ממלא 100% ממנו (size-full),
+  // שמחושב ל-0 בלי height מפורש כלשהו על ה-wrapper. רק shape (לא text/
+  // image/button, שרוצים גובה טבעי לפי תוכן) מקבל ברירת מחדל -- ורק
+  // כשהמחבר לא ציין layout.height בעצמו.
+  if (layer.type === "shape" && layout.mode === "stage" && !layout.height) {
+    style.aspectRatio = "1";
+  }
 
   const inner = renderLayerContent(layer, blocks, theme, imagePreviewOverrides);
   if (inner === null) return null;

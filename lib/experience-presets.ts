@@ -155,7 +155,7 @@ export function parallaxTrack(
  * מרכיב על גבי parallaxTrack בדיוק כמו ש-fadeUpClipTrack מרכיב על גבי
  * fadeUpTrack למעלה -- אותו דפוס compose, לא helper שלישי עצמאי.
  */
-function parallaxDepthTrack(
+export function parallaxDepthTrack(
   target: string,
   factor: number,
   opts: { easing?: ExperienceTrack["easing"]; peakOpacity?: number; blurPx?: number } = {}
