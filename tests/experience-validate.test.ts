@@ -96,3 +96,34 @@ describe("validateExperience — aggregates across scenes", () => {
     expect(validateExperience(config)).toHaveLength(0);
   });
 });
+
+/**
+ * Milestone B4 (docs/architecture-decision-gate.md §2.2): color track
+ * contrast check דרך lib/contrast.ts — לא מנגנון ניגודיות שני.
+ */
+describe("validateScene — color track contrast (Milestone B4)", () => {
+  it("flags a color keyframe that fails WCAG contrast against the given background, only when a contrastCtx is passed", () => {
+    const s = scene({
+      tracks: [{ id: "t1", target: "cta-label", props: { color: [{ at: 0, value: "#FFFFFF" }] } }],
+    });
+    // white text on white background -- fails contrast (1:1)
+    const issues = validateScene(s, { backgroundHex: "#FFFFFF" });
+    expect(issues).toHaveLength(1);
+    expect(issues[0].kind).toBe("low-contrast-color");
+    expect(issues[0].target).toBe("cta-label");
+  });
+
+  it("does not run the contrast check at all when no contrastCtx is passed (opt-in, backward compatible)", () => {
+    const s = scene({
+      tracks: [{ id: "t1", target: "cta-label", props: { color: [{ at: 0, value: "#FFFFFF" }] } }],
+    });
+    expect(validateScene(s)).toHaveLength(0);
+  });
+
+  it("does not flag a color keyframe with adequate contrast", () => {
+    const s = scene({
+      tracks: [{ id: "t1", target: "cta-label", props: { color: [{ at: 0, value: "#000000" }] } }],
+    });
+    expect(validateScene(s, { backgroundHex: "#FFFFFF" })).toHaveLength(0);
+  });
+});

@@ -56,13 +56,28 @@ export function resolveResponsive<T>(value: Responsive<T>, mode: ResponsiveMode)
 // Keyframes ו-Tracks (§9, §5.2)
 // ---------------------------------------------------------------------------
 
-/** MVP: 6 מאפיינים מספריים בלבד. הרחבה לצבע/מחרוזת עתידית (§5.2) */
-export type AnimatableProp = "opacity" | "x" | "y" | "scale" | "rotate" | "blur";
+/**
+ * 8 מאפיינים: 6 מספריים מקוריים + clip (חשיפה, 0–1, כמו opacity/scale)
+ * + color (Milestone B1 של תוכנית ה-rebuild — docs/scroll-experience-rebuild-audit.md
+ * §2.1). clip נשאר מספרי לגמרי — "כמה חשוף" 0→1, בלי כיוון ניתן להגדרה
+ * ב-MVP (תמיד חושף כלפי מעלה, ראו PROP_CSS_VAR/.exp-motion). color הוא
+ * היחיד עם ערך מחרוזת (hex) — ראו Keyframe.value למטה.
+ */
+export type AnimatableProp = "opacity" | "x" | "y" | "scale" | "rotate" | "blur" | "clip" | "color";
 
 export interface Keyframe {
   /** מיקום בתוך ה-track, 0–1 */
   at: number;
-  value: number;
+  /**
+   * מספר לכל מאפיין רגיל; hex ("#RRGGBB") כש-prop==="color" בלבד —
+   * ראו lib/experience-interpolate.ts evaluateKeyframes לענף האינטרפולציה
+   * (mixHex מ-lib/contrast.ts, לא ליניארית-מספרית). **אילוץ מכוון**:
+   * color track לא תומך בטוקן סמנטי ("primary") בתוך keyframe — הערך
+   * חייב hex מפורש, כי אינטרפולציה בזמן ריצה צריכה לדעת את שני קצוות
+   * הצבע בפועל (טוקן סמנטי הוא CSS var שלא ניתן לפתור אלגברית בלי
+   * DOM read בלולאת הפריים, בניגוד לעקרון "אפס DOM query מיותר").
+   */
+  value: number | string;
   /** easing מ-keyframe זה אל הבא; ברירת מחדל מה-track/settings */
   easing?: EasingId;
 }
@@ -87,11 +102,12 @@ export interface ExperienceTrack {
 // ---------------------------------------------------------------------------
 
 export interface PropertyMetadata {
-  type: "numeric" | "angle" | "length" | "responsive-length";
+  type: "numeric" | "angle" | "length" | "responsive-length" | "color";
   unit: string;
   interpolation: "linear";
   /** [min, max] — max=null פירושו ללא תקרה */
   range?: [number, number | null];
+  /** לא רלוונטי ל-type:"color" (ראו הערה על Keyframe.value) — נשאר 0 שם, לא נצרך */
   default: number;
   performanceClass: "cheap" | "expensive";
 }
@@ -103,6 +119,10 @@ export const PROPERTY_METADATA: Record<AnimatableProp, PropertyMetadata> = {
   scale: { type: "numeric", unit: "", interpolation: "linear", range: [0, null], default: 1, performanceClass: "cheap" },
   rotate: { type: "angle", unit: "deg", interpolation: "linear", default: 0, performanceClass: "cheap" },
   blur: { type: "length", unit: "px", interpolation: "linear", range: [0, null], default: 0, performanceClass: "expensive" },
+  /** "כמה חשוף" — 0 מוסתר לגמרי, 1 חשוף לגמרי; כיוון קבוע (מלמטה כלפי מעלה) ב-MVP, ראו .exp-motion ב-globals.css */
+  clip: { type: "numeric", unit: "", interpolation: "linear", range: [0, 1], default: 1, performanceClass: "expensive" },
+  /** ראו Keyframe.value — ערכי hex בלבד, לא טוקן סמנטי; interpolation דרך mixHex לא ליניארית-מספרית */
+  color: { type: "color", unit: "", interpolation: "linear", default: 0, performanceClass: "cheap" },
 };
 
 /** ממיר טוקן סמנטי (primary/accent/...) ל-CSS var של הערכה הפעילה;
@@ -139,6 +159,8 @@ export const PROPERTY_LABELS: Record<AnimatableProp, string> = {
   scale: "קנה מידה",
   rotate: "סיבוב",
   blur: "טשטוש",
+  clip: "חשיפה (clip)",
+  color: "צבע",
 };
 
 /**
@@ -269,10 +291,18 @@ export function layerLayoutStyle(layout: LayerLayout): Record<string, string | n
   return style;
 }
 
+/**
+ * Milestone B4 (docs/architecture-decision-gate.md §2): color תמיד עוטף
+ * ב-`var(--exp-color, <ברירת מחדל>)` — לא רק כש-style.color מוגדר. זה
+ * no-op ויזואלי כשאין track שכותב ל-`--exp-color` על ה-ExperienceTarget
+ * האב (`inherit`/הצבע הסטטי בדיוק כמו קודם), אבל פותח את הדלת ל-track
+ * לדרוס דרך אותה CSS custom property שיורשת מהעטיפה — בלי לשנות שום
+ * דבר ב-layer שאין לו track על color בכלל.
+ */
 export function layerStyleToCss(style: LayerStyle | undefined): Record<string, string | number> {
-  if (!style) return {};
-  const css: Record<string, string | number> = {};
-  if (style.color) css.color = resolveThemeColor(style.color);
+  const colorFallback = style?.color ? resolveThemeColor(style.color) : "inherit";
+  const css: Record<string, string | number> = { color: `var(--exp-color, ${colorFallback})` };
+  if (!style) return css;
   if (style.background) css.backgroundColor = resolveThemeColor(style.background);
   if (typeof style.radius === "number") css.borderRadius = `${style.radius}px`;
   return css;
@@ -356,8 +386,23 @@ export interface ExperienceScene {
   tracks: ExperienceTrack[];
 }
 
-/** לא boolean — state machine מפורש (§11). MVP צורך בפועל רק before/active/after */
+/**
+ * לא boolean — state machine מפורש (§11). עד Milestone B2 (rebuild)
+ * נצרך בפועל רק before/active/after; מ-B2 ואילך גם entering/leaving
+ * מחושבים אמיתית ב-measureScene (components/experience/experience-runtime.ts),
+ * לפי הסף הקבוע למטה — לא רק טיפוס ללא מימוש.
+ */
 export type SceneLifecycleState = "before" | "entering" | "active" | "leaving" | "after";
+
+/**
+ * חלק (fraction) מתחילת/סוף ה-scene (מתוך [0,1] של rawProgress) שנחשב
+ * "entering"/"leaving" ולא עדיין/כבר "active". קבוע מתועד, לא מוגדר
+ * ל-scene בודד ב-MVP — עקבי עם עקרון "בלי freeform אינסופי" בשלב הזה.
+ * שימוש: Milestone B3 (handoff בין סצנות) ו-Milestone D2 (תצוגת lifecycle
+ * בסטודיו) קוראים מכאן, לא ממציאים ספים חדשים בכל מקום.
+ */
+export const SCENE_LIFECYCLE_ENTER_FRACTION = 0.15;
+export const SCENE_LIFECYCLE_LEAVE_FRACTION = 0.15;
 
 // ---------------------------------------------------------------------------
 // Experience Config — השדה שמתווסף ל-Page (§5.1)

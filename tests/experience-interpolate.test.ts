@@ -177,3 +177,46 @@ describe("evaluateTrack — full resolution with responsive overrides", () => {
     expect(Object.keys(result)).toEqual(["scale"]);
   });
 });
+
+/**
+ * Milestone B1/B4 (docs/scroll-experience-rebuild-audit.md §2.1) — color
+ * keyframes: ערך string (hex), אינטרפולציה דרך mixHex (lib/contrast.ts)
+ * ולא interpolate() המספרי.
+ */
+describe("evaluateKeyframes — color (hex) interpolation", () => {
+  const kfs: Keyframe[] = [
+    { at: 0, value: "#000000" },
+    { at: 1, value: "#FFFFFF" },
+  ];
+
+  it("returns a string, not a number, for color keyframes", () => {
+    const result = evaluateKeyframes(kfs, 0.5, "linear");
+    expect(typeof result).toBe("string");
+  });
+
+  it("mixes black->white to mid-gray at t=0.5 (linear easing)", () => {
+    expect(evaluateKeyframes(kfs, 0.5, "linear")).toBe("#808080");
+  });
+
+  it("clamps to the first/last keyframe color outside [0,1]", () => {
+    expect(evaluateKeyframes(kfs, -1, "linear")).toBe("#000000");
+    expect(evaluateKeyframes(kfs, 2, "linear")).toBe("#FFFFFF");
+  });
+
+  it("evaluateTrack surfaces the interpolated hex string for a color prop", () => {
+    const track: ExperienceTrack = {
+      id: "t-color",
+      target: "cta-button",
+      props: { color: kfs },
+    };
+    const result = evaluateTrack(track, 0.5, "linear");
+    expect(result.color).toBe("#808080");
+  });
+});
+
+describe("evaluateKeyframes — clip (numeric, same engine as opacity/scale)", () => {
+  it("interpolates linearly like any other numeric property", () => {
+    const kfs: Keyframe[] = [{ at: 0, value: 0 }, { at: 1, value: 1 }];
+    expect(evaluateKeyframes(kfs, 0.5, "linear")).toBe(0.5);
+  });
+});

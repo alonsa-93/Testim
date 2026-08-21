@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ExperienceRuntime, TargetRegistry, measureScene } from "@/components/experience/experience-runtime";
+import { ExperienceRuntime, TargetRegistry, measureScene, sceneLifecycleState } from "@/components/experience/experience-runtime";
 import { WindowScrollRoot, ElementScrollRoot } from "@/lib/scroll-root";
 import { emptyExperience, type ExperienceConfig } from "@/lib/experience";
 
@@ -384,6 +384,162 @@ describe("ExperienceRuntime — scrollToProgress (Phase 7 Timeline scrubber)", (
     expect(() => runtime.scrollToProgress("missing", 0.5)).not.toThrow();
     runtime.attach(new WindowScrollRoot());
     expect(() => runtime.scrollToProgress("missing", 0.5)).not.toThrow();
+    runtime.detach();
+  });
+});
+
+/**
+ * Milestone B2 (docs/scroll-experience-rebuild-audit.md §2.2): 5 מצבים
+ * אמיתיים. הסף (SCENE_LIFECYCLE_ENTER/LEAVE_FRACTION, lib/experience.ts)
+ * הוא 0.15 משני הצדדים.
+ */
+describe("sceneLifecycleState — full 5-state lifecycle", () => {
+  it.each([
+    [-0.1, "before"],
+    [0, "entering"],
+    [0.1, "entering"],
+    [0.14, "entering"],
+    [0.15, "active"],
+    [0.5, "active"],
+    [0.85, "active"],
+    [0.86, "leaving"],
+    [0.99, "leaving"],
+    [1, "leaving"],
+    [1.01, "after"],
+  ] as const)("sceneLifecycleState(%s) === %s", (raw, expected) => {
+    expect(sceneLifecycleState(raw)).toBe(expected);
+  });
+});
+
+describe("ExperienceRuntime — globalProgress + data-scene-lifecycle (Milestone B2)", () => {
+  function twoSceneConfig(): ExperienceConfig {
+    return {
+      ...emptyExperience(),
+      enabled: true,
+      scenes: [
+        { id: "s1", name: "Scene 1", composition: "flow", pinned: false, durationVh: 200, layers: [], tracks: [] },
+        { id: "s2", name: "Scene 2", composition: "flow", pinned: false, durationVh: 200, layers: [], tracks: [] },
+      ],
+    };
+  }
+
+  afterEach(() => {
+    document.body.innerHTML = "";
+  });
+
+  it("writes data-scene-lifecycle on the scene element, matching measureScene's state", async () => {
+    const runtime = new ExperienceRuntime({ ...emptyExperience(), enabled: true, scenes: [{ id: "s1", name: "S", composition: "flow", pinned: false, durationVh: 200, layers: [], tracks: [] }] });
+    const sceneEl = document.createElement("section");
+    vi.spyOn(sceneEl, "getBoundingClientRect").mockReturnValue({ top: -400, height: 1600 } as DOMRect);
+    document.body.appendChild(sceneEl);
+    Object.defineProperty(window, "innerHeight", { value: 800, configurable: true });
+
+    runtime.registerScene("s1", sceneEl);
+    runtime.attach(new WindowScrollRoot());
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    // top=-400, total=800 -> rawProgress=0.5 -> active
+    expect(sceneEl.getAttribute("data-scene-lifecycle")).toBe("active");
+    runtime.detach();
+  });
+
+  it("computes globalProgress across two scenes and writes --exp-global-progress on the root element", async () => {
+    const runtime = new ExperienceRuntime(twoSceneConfig());
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    runtime.setRootElement(root);
+
+    // scene 1: absolute [0, 1600); scene 2: absolute [1600, 3200) -- combined span
+    // 3200, viewport 800 -> totalSpan = 3200-0-800 = 2400. scrollPosition=1200 (25% through
+    // the combined 2400 range from top=0) -> globalProgress = 1200/2400 = 0.5
+    const scene1 = document.createElement("section");
+    const scene2 = document.createElement("section");
+    document.body.appendChild(scene1);
+    document.body.appendChild(scene2);
+
+    const scrollY = 1200;
+    vi.spyOn(window, "scrollY", "get").mockImplementation(() => scrollY);
+    Object.defineProperty(window, "innerHeight", { value: 800, configurable: true });
+    vi.spyOn(scene1, "getBoundingClientRect").mockImplementation(() => ({ top: 0 - scrollY, height: 1600 }) as DOMRect);
+    vi.spyOn(scene2, "getBoundingClientRect").mockImplementation(() => ({ top: 1600 - scrollY, height: 1600 }) as DOMRect);
+
+    runtime.registerScene("s1", scene1);
+    runtime.registerScene("s2", scene2);
+    runtime.attach(new WindowScrollRoot());
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    expect(runtime.globalProgress).toBeCloseTo(0.5, 5);
+    expect(root.style.getPropertyValue("--exp-global-progress")).toBe(String(runtime.globalProgress));
+    runtime.detach();
+  });
+
+  it("globalProgress is 0 when no scenes are registered (no rootElement writes, no crash)", () => {
+    const runtime = new ExperienceRuntime(twoSceneConfig());
+    const root = document.createElement("div");
+    runtime.setRootElement(root);
+    expect(() => runtime.forceUpdate()).not.toThrow();
+    expect(runtime.globalProgress).toBe(0);
+  });
+});
+
+/** Milestone B1/B4 — clip/color end-to-end דרך ה-runtime (לא רק evaluateTrack הטהור) */
+describe("ExperienceRuntime — clip/color tracks write to their own CSS vars", () => {
+  afterEach(() => {
+    document.body.innerHTML = "";
+  });
+
+  function config(overrides: Partial<ExperienceConfig> = {}): ExperienceConfig {
+    return {
+      ...emptyExperience(),
+      enabled: true,
+      scenes: [
+        { id: "s1", name: "Scene", composition: "flow", pinned: false, durationVh: 200, layers: [], tracks: [] },
+      ],
+      ...overrides,
+    };
+  }
+
+  it("writes --exp-clip as a plain number and --exp-color as a hex string", async () => {
+    const runtime = new ExperienceRuntime(
+      config({
+        scenes: [
+          {
+            id: "s1",
+            name: "Scene",
+            composition: "flow",
+            pinned: false,
+            durationVh: 200,
+            layers: [],
+            tracks: [
+              {
+                id: "t1",
+                target: "hero-title",
+                easing: "linear",
+                props: {
+                  clip: [{ at: 0, value: 0 }, { at: 1, value: 1 }],
+                  color: [{ at: 0, value: "#000000" }, { at: 1, value: "#FFFFFF" }],
+                },
+              },
+            ],
+          },
+        ],
+      })
+    );
+    const sceneEl = document.createElement("section");
+    vi.spyOn(sceneEl, "getBoundingClientRect").mockReturnValue({ top: -400, height: 1600 } as DOMRect);
+    document.body.appendChild(sceneEl);
+    Object.defineProperty(window, "innerHeight", { value: 800, configurable: true });
+
+    const titleEl = document.createElement("h1");
+    document.body.appendChild(titleEl);
+
+    runtime.registerScene("s1", sceneEl);
+    runtime.targets.register("hero-title", titleEl);
+    runtime.attach(new WindowScrollRoot());
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    expect(titleEl.style.getPropertyValue("--exp-clip")).toBe("0.5");
+    expect(titleEl.style.getPropertyValue("--exp-color")).toBe("#808080");
     runtime.detach();
   });
 });

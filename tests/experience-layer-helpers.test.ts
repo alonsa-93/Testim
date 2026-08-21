@@ -69,31 +69,37 @@ describe("layerLayoutStyle — flow mode", () => {
 });
 
 describe("layerStyleToCss — semantic color resolution", () => {
+  // Milestone B4 (docs/architecture-decision-gate.md §2): color תמיד
+  // עוטף ב-var(--exp-color, <fallback>) כדי ש-Track יוכל לדרוס אותו --
+  // ה-fallback הוא בדיוק מה שהטסטים הישנים ציפו כערך הסופי (no-op
+  // ויזואלי כשאין track: var(--exp-color, X) === X כשה-var לא מוגדר).
   it("resolves a semantic color/background token to the theme CSS variable", () => {
     const style: LayerStyle = { color: "primary", background: "surface" };
     const css = layerStyleToCss(style);
-    expect(css.color).toBe("var(--ds-color-primary)");
+    expect(css.color).toBe("var(--exp-color, var(--ds-color-primary))");
     expect(css.backgroundColor).toBe("var(--ds-color-surface)");
   });
 
-  it("passes a custom hex value through unchanged", () => {
-    expect(layerStyleToCss({ color: "#ff0000" }).color).toBe("#ff0000");
+  it("passes a custom hex value through unchanged (as the var fallback)", () => {
+    expect(layerStyleToCss({ color: "#ff0000" }).color).toBe("var(--exp-color, #ff0000)");
   });
 
   it("resolves onPrimary/onAccent -- needed for readable text on a primary/accent-colored background (§19 DoD: presets must not fail contrast)", () => {
     // אלה מחושבים בסטודיו במיוחד לניגודיות תקינה (bestTextOn/ContrastPanel) --
     // בלעדי המיפוי הזה, layer עם color:"onPrimary" על רקע primary היה מקבל
     // מחרוזת CSS לא תקינה ("onPrimary" עצמו), לא את הצבע המחושב.
-    expect(layerStyleToCss({ color: "onPrimary" }).color).toBe("var(--ds-color-on-primary)");
-    expect(layerStyleToCss({ color: "onAccent" }).color).toBe("var(--ds-color-on-accent)");
+    expect(layerStyleToCss({ color: "onPrimary" }).color).toBe("var(--exp-color, var(--ds-color-on-primary))");
+    expect(layerStyleToCss({ color: "onAccent" }).color).toBe("var(--exp-color, var(--ds-color-on-accent))");
   });
 
   it("converts radius (number) into a px border-radius", () => {
     expect(layerStyleToCss({ radius: 12 }).borderRadius).toBe("12px");
   });
 
-  it("returns an empty object for undefined style", () => {
-    expect(layerStyleToCss(undefined)).toEqual({});
+  it("still emits a Track-drivable color var (inherit fallback) even with no style at all", () => {
+    // Milestone B4: no-op ויזואלי בפועל -- var(--exp-color, inherit) מרונדר
+    // זהה לחלוטין לאי-הגדרת color בכלל, כשאין track שכותב ל---exp-color.
+    expect(layerStyleToCss(undefined)).toEqual({ color: "var(--exp-color, inherit)" });
   });
 });
 

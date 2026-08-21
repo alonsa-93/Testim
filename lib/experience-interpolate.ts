@@ -1,3 +1,4 @@
+import { mixHex } from "./contrast";
 import {
   EASING_CURVES,
   resolveResponsive,
@@ -90,12 +91,19 @@ export function ease(t: number, easing: EasingId): number {
  * מעריך רשימת keyframes (חייבת להיות ממוינת לפי `at` — normalizeExperience
  * כבר מבטיח זאת) במיקום progress נתון. לפני ה-keyframe הראשון/אחרי
  * האחרון — הערך נתפס (clamp), לא extrapolation.
+ *
+ * Milestone B1/B4: ערכי color הם hex (string), לא number — הענף
+ * `typeof first.value === "string"` מזהה זאת (בזמן ריצה, לא לפי שם
+ * ה-prop, כי הפונקציה הזו טהורה ולא מקבלת prop) ומאנטרפל דרך `mixHex`
+ * (lib/contrast.ts, אותו אלגוריתם שכבר גוזר hover/muted/border) במקום
+ * `interpolate` המספרי. אם mixHex נכשל (hex לא תקין) — נופל בחינניות
+ * ל-`to.value` (לא NaN/undefined שדולף ל-CSS).
  */
 export function evaluateKeyframes(
   keyframes: readonly Keyframe[],
   progress: number,
   defaultEasing: EasingId
-): number | undefined {
+): number | string | undefined {
   if (keyframes.length === 0) return undefined;
   if (keyframes.length === 1) return keyframes[0].value;
 
@@ -105,6 +113,8 @@ export function evaluateKeyframes(
   if (p <= first.at) return first.value;
   if (p >= last.at) return last.value;
 
+  const isColor = typeof first.value === "string";
+
   for (let i = 0; i < keyframes.length - 1; i++) {
     const from = keyframes[i];
     const to = keyframes[i + 1];
@@ -113,7 +123,10 @@ export function evaluateKeyframes(
     // span=0 (שני keyframes באותו at) -- הערך "קופץ" ל-to ברגע ההוא, לא NaN מחלוקה באפס
     const localT = span > 0 ? (p - from.at) / span : 1;
     const easedT = ease(localT, from.easing ?? defaultEasing);
-    return interpolate(from.value, to.value, easedT);
+    if (isColor) {
+      return mixHex(String(from.value), String(to.value), easedT) ?? to.value;
+    }
+    return interpolate(from.value as number, to.value as number, easedT);
   }
   return last.value;
 }
@@ -142,10 +155,10 @@ export function evaluateTrack(
   sceneProgress: number,
   defaultEasing: EasingId,
   mode: ResponsiveMode = "base"
-): Partial<Record<AnimatableProp, number>> {
+): Partial<Record<AnimatableProp, number | string>> {
   const localProgress = trackLocalProgress(track, sceneProgress);
   const easing = track.easing ?? defaultEasing;
-  const result: Partial<Record<AnimatableProp, number>> = {};
+  const result: Partial<Record<AnimatableProp, number | string>> = {};
 
   for (const prop of Object.keys(track.props) as AnimatableProp[]) {
     const responsiveOverride =

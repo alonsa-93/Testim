@@ -2,6 +2,8 @@ import { measureRelativeToRoot, type ScrollRoot } from "@/lib/scroll-root";
 import { evaluateTrack, normalizeProgress } from "@/lib/experience-interpolate";
 import {
   PROPERTY_METADATA,
+  SCENE_LIFECYCLE_ENTER_FRACTION,
+  SCENE_LIFECYCLE_LEAVE_FRACTION,
   type AnimatableProp,
   type ExperienceConfig,
   type ExperienceScene,
@@ -51,6 +53,9 @@ export interface SceneMeasurement {
   /** progress גולמי, לא מהודק — שלילי לפני הscene, מעל 1 אחריו */
   rawProgress: number;
   state: SceneLifecycleState;
+  /** יחסית ל-viewport של ה-scrollRoot *ברגע המדידה* — ראו globalProgress ב-update() לשימוש */
+  top: number;
+  height: number;
 }
 
 export function measureScene(
@@ -70,9 +75,22 @@ export function measureScene(
   // ה-viewport top ממש.
   const rawProgress = total > 0 ? -top / total : viewportSize > 0 ? (viewportSize - top) / viewportSize : top <= 0 ? 1 : 0;
   const progress = normalizeProgress(rawProgress);
-  // MVP: 3 מצבים בפועל בלבד (before/active/after) -- ראו §11 באודיט
-  const state: SceneLifecycleState = rawProgress < 0 ? "before" : rawProgress > 1 ? "after" : "active";
-  return { progress, rawProgress, state };
+  const state = sceneLifecycleState(rawProgress);
+  return { progress, rawProgress, state, top, height };
+}
+
+/**
+ * Milestone B2 (docs/scroll-experience-rebuild-audit.md §2.2): 5 מצבים
+ * אמיתיים, לא 3. entering/leaving הם "רצועות" קבועות ליד קצוות ה-scene
+ * (SCENE_LIFECYCLE_*_FRACTION, lib/experience.ts) — before/after נשארים
+ * זהים לחלוטין להתנהגות הקודמת (rawProgress<0 / >1).
+ */
+export function sceneLifecycleState(rawProgress: number): SceneLifecycleState {
+  if (rawProgress < 0) return "before";
+  if (rawProgress > 1) return "after";
+  if (rawProgress < SCENE_LIFECYCLE_ENTER_FRACTION) return "entering";
+  if (rawProgress > 1 - SCENE_LIFECYCLE_LEAVE_FRACTION) return "leaving";
+  return "active";
 }
 
 const PROP_CSS_VAR: Record<AnimatableProp, string> = {
@@ -82,12 +100,17 @@ const PROP_CSS_VAR: Record<AnimatableProp, string> = {
   scale: "--exp-scale",
   rotate: "--exp-rotate",
   blur: "--exp-blur",
+  clip: "--exp-clip",
+  color: "--exp-color",
 };
 
-function formatPropValue(prop: AnimatableProp, value: number): string {
+/** color עובר as-is (כבר hex מוכן מ-evaluateKeyframes/mixHex) — לא מספר עם יחידה */
+function formatPropValue(prop: AnimatableProp, value: number | string): string {
+  if (prop === "color") return String(value);
+  const numeric = value as number;
   const unit = PROPERTY_METADATA[prop].unit;
-  if (prop === "x" || prop === "y") return `${value}%`;
-  return unit ? `${value}${unit}` : String(value);
+  if (prop === "x" || prop === "y") return `${numeric}%`;
+  return unit ? `${numeric}${unit}` : String(numeric);
 }
 
 // ---------------------------------------------------------------------------
@@ -109,10 +132,18 @@ export class ExperienceRuntime {
   private frame: number | null = null;
   private unsubscribe: (() => void) | null = null;
   private lastMeasurements = new Map<string, SceneMeasurement>();
+  /** האלמנט שעליו נכתב --exp-global-progress (§B2) — ה-wrapper של ExperienceProvider */
+  private rootElement: HTMLElement | null = null;
+  private lastGlobalProgress = 0;
 
   constructor(config: ExperienceConfig, mode: ResponsiveMode = "base") {
     this.config = config;
     this.mode = mode;
+  }
+
+  /** נקרא ע"י ExperienceProvider עם ה-wrapper div שלו (Phase 2 root) */
+  setRootElement(el: HTMLElement | null) {
+    this.rootElement = el;
   }
 
   /** מעדכן קונפיגורציה (למשל אחרי עריכה בסטודיו) בלי להפעיל מחדש את הלולאה */
@@ -172,6 +203,11 @@ export class ExperienceRuntime {
 
   private update() {
     if (!this.scrollRoot) return;
+    const scrollPosition = this.scrollRoot.getScrollPosition();
+    const viewportSize = this.scrollRoot.getViewportSize();
+    let minAbsoluteTop = Infinity;
+    let maxAbsoluteBottom = -Infinity;
+
     for (const { scene, element } of this.scenes.values()) {
       const measurement = measureScene(element, this.scrollRoot);
       this.lastMeasurements.set(scene.id, measurement);
@@ -179,8 +215,44 @@ export class ExperienceRuntime {
       // פנימית: זה הבסיס שמעברי scene (Phase 4, transition="fade")
       // וה-Debug Mode (Phase 8) קוראים ישירות מ-CSS/DOM, בלי עוד כתיבת JS.
       element.style.setProperty("--exp-scene-progress", String(measurement.progress));
+      // Milestone B2: lifecycle כ-data-attribute (לא רק CSS var) -- קריא
+      // ל-Playwright/QA בלי לפענח מספר, וזמין ל-CSS selectors עתידיים
+      // (data-scene-lifecycle="entering" וכו') בלי עוד כתיבת JS.
+      element.setAttribute("data-scene-lifecycle", measurement.state);
       this.applyScene(scene, measurement.progress);
+
+      // Milestone B2 -- globalProgress: גבולות מוחלטים (בלתי-תלויים במיקום
+      // גלילה נוכחי) של כל ה-scenes יחד, מתוך אותה מדידה שכבר בוצעה
+      // לעיל -- בלי getBoundingClientRect נוסף (§B2, "אפס DOM query
+      // מיותר"). absoluteTop = מיקום הגלילה הנוכחי + top היחסי הנמדד עכשיו
+      // -- קבוע בלי קשר לאיפה שוללים כרגע (אותו עיקרון בדיוק כמו
+      // scrollToProgress, רק בכיוון ההפוך).
+      const absoluteTop = scrollPosition + measurement.top;
+      const absoluteBottom = absoluteTop + measurement.height;
+      if (absoluteTop < minAbsoluteTop) minAbsoluteTop = absoluteTop;
+      if (absoluteBottom > maxAbsoluteBottom) maxAbsoluteBottom = absoluteBottom;
     }
+
+    if (this.scenes.size > 0 && this.rootElement) {
+      const totalSpan = maxAbsoluteBottom - minAbsoluteTop - viewportSize;
+      const rawGlobal =
+        totalSpan > 0
+          ? (scrollPosition - minAbsoluteTop) / totalSpan
+          : scrollPosition >= minAbsoluteTop
+            ? 1
+            : 0;
+      this.lastGlobalProgress = normalizeProgress(rawGlobal);
+      // display:contents על ה-root (ExperienceProvider) -- אין לו box
+      // משלו, אז אי-אפשר למדוד אותו ישירות (getBoundingClientRect היה
+      // מחזיר אפסים), אבל CSS custom properties כן יורשות דרכו לילדים
+      // כרגיל -- ראו experience-provider.tsx.
+      this.rootElement.style.setProperty("--exp-global-progress", String(this.lastGlobalProgress));
+    }
+  }
+
+  /** progress גלובלי [0,1] על פני כל ה-Experience (לא scene בודדת) — Milestone B2 */
+  get globalProgress(): number {
+    return this.lastGlobalProgress;
   }
 
   /**
@@ -199,7 +271,7 @@ export class ExperienceRuntime {
       const target = this.targets.resolve(track.target);
       if (!target) continue; // target חסר -- מדלגים, לא קורסים (§7.3)
       const values = evaluateTrack(track, progress, this.config.settings.defaultEasing, this.mode);
-      for (const [prop, value] of Object.entries(values) as [AnimatableProp, number][]) {
+      for (const [prop, value] of Object.entries(values) as [AnimatableProp, number | string][]) {
         if (lite && PROPERTY_METADATA[prop].performanceClass === "expensive") continue;
         target.style.setProperty(PROP_CSS_VAR[prop], formatPropValue(prop, value));
       }

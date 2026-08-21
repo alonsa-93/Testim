@@ -30,6 +30,7 @@ export function ExperienceTarget({
   as: Tag = "div",
   className,
   style,
+  managed,
   children,
 }: {
   id: string;
@@ -37,6 +38,12 @@ export function ExperienceTarget({
   className?: string;
   /** מוזג עם ברירות המחדל של .exp-motion -- בעיקר לשימוש ע"י Phase 6 layers (מיקום stage/flow) */
   style?: CSSProperties;
+  /**
+   * Milestone B4: מסמן `data-experience-managed` — הגנת-CSS כפולה
+   * (defense in depth) לצד `RevealManagedContext` (components/fx/reveal.tsx)
+   * שכבר מנטרל את ה-IO ברמת ה-JS. נצרך ע"י ExperienceBlockRefLayer בלבד.
+   */
+  managed?: boolean;
   children: ReactNode;
 }) {
   const runtime = useExperienceRuntime();
@@ -54,6 +61,7 @@ export function ExperienceTarget({
       ref={ref}
       data-experience-target={id}
       data-scrub=""
+      data-experience-managed={managed ? "" : undefined}
       className={cn("exp-motion", className)}
       style={style}
     >

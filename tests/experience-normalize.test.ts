@@ -163,3 +163,118 @@ describe("lib/experience — id helpers (same convention as newBlockId)", () => 
     expect(normalizeExperience(empty)).toEqual(empty);
   });
 });
+
+/**
+ * Milestone B1 (docs/scroll-experience-rebuild-audit.md §2.1): clip/color
+ * round-trip תואם-לאחור. קריטי: דף/preset ישן בלי clip/color בכלל חייב
+ * להמשיך להיטען זהה לחלוטין (round-trip idempotence) -- normalizeExperience
+ * לא ממציא שדות חדשים כשלא התבקש.
+ */
+describe("normalizeExperience — clip/color (Milestone B1)", () => {
+  it("round-trips clip (numeric) keyframes unchanged", () => {
+    const raw = {
+      enabled: true,
+      scenes: [
+        {
+          id: "s1",
+          name: "S",
+          tracks: [{ id: "t1", target: "hero-image", props: { clip: [{ at: 0, value: 0 }, { at: 1, value: 1 }] } }],
+        },
+      ],
+    };
+    const result = normalizeExperience(raw);
+    expect(result!.scenes[0].tracks[0].props.clip).toEqual([{ at: 0, value: 0 }, { at: 1, value: 1 }]);
+  });
+
+  it("accepts valid hex color keyframes and uppercases them", () => {
+    const raw = {
+      enabled: true,
+      scenes: [
+        {
+          id: "s1",
+          name: "S",
+          tracks: [{ id: "t1", target: "cta", props: { color: [{ at: 0, value: "#000" }, { at: 1, value: "#ffffff" }] } }],
+        },
+      ],
+    };
+    const result = normalizeExperience(raw);
+    expect(result!.scenes[0].tracks[0].props.color).toEqual([
+      { at: 0, value: "#000" },
+      { at: 1, value: "#FFFFFF" },
+    ]);
+  });
+
+  it("silently drops a color keyframe with a non-hex value (e.g. a semantic token — not supported per architecture-decision-gate.md)", () => {
+    const raw = {
+      enabled: true,
+      scenes: [
+        {
+          id: "s1",
+          name: "S",
+          tracks: [{ id: "t1", target: "cta", props: { color: [{ at: 0, value: "primary" }, { at: 1, value: "#FFFFFF" }] } }],
+        },
+      ],
+    };
+    const result = normalizeExperience(raw);
+    expect(result!.scenes[0].tracks[0].props.color).toEqual([{ at: 1, value: "#FFFFFF" }]);
+  });
+
+  it("drops a numeric-typed value on a color prop and a string-typed value on a numeric prop (type mismatch, not just format)", () => {
+    const raw = {
+      enabled: true,
+      scenes: [
+        {
+          id: "s1",
+          name: "S",
+          tracks: [
+            {
+              id: "t1",
+              target: "cta",
+              props: {
+                color: [{ at: 0, value: 5 }], // number where a hex string is required
+                opacity: [{ at: 0, value: "0.5" }], // string where a number is required
+                // a valid prop so the track itself survives (an all-invalid track is
+                // dropped entirely -- see the "no data-loss" test below for that case)
+                scale: [{ at: 0, value: 1 }],
+              },
+            },
+          ],
+        },
+      ],
+    };
+    const result = normalizeExperience(raw);
+    expect(result!.scenes[0].tracks[0].props.color).toBeUndefined();
+    expect(result!.scenes[0].tracks[0].props.opacity).toBeUndefined();
+    expect(result!.scenes[0].tracks[0].props.scale).toEqual([{ at: 0, value: 1 }]);
+  });
+
+  it("drops the whole track when every prop on it is type-invalid (a track that writes nothing isn't a real track)", () => {
+    const raw = {
+      enabled: true,
+      scenes: [
+        {
+          id: "s1",
+          name: "S",
+          tracks: [{ id: "t1", target: "cta", props: { color: [{ at: 0, value: 5 }] } }],
+        },
+      ],
+    };
+    const result = normalizeExperience(raw);
+    expect(result!.scenes[0].tracks).toHaveLength(0);
+  });
+
+  it("an old page/preset with no clip/color at all still round-trips identically (backward compat)", () => {
+    const raw = {
+      enabled: true,
+      scenes: [
+        {
+          id: "s1",
+          name: "S",
+          tracks: [{ id: "t1", target: "hero-title", props: { opacity: [{ at: 0, value: 0 }, { at: 1, value: 1 }] } }],
+        },
+      ],
+    };
+    const result = normalizeExperience(raw);
+    expect(result!.scenes[0].tracks[0].props).toEqual({ opacity: [{ at: 0, value: 0 }, { at: 1, value: 1 }] });
+  });
+});

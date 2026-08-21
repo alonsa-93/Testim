@@ -26,7 +26,9 @@ import type {
 
 const LAYER_TYPES: ReadonlySet<string> = new Set(["text", "image", "shape", "button", "block"]);
 const EASING_IDS: ReadonlySet<string> = new Set(["linear", "soft", "spring", "cinematic", "sharp"]);
-const ANIMATABLE_PROPS: ReadonlySet<string> = new Set(["opacity", "x", "y", "scale", "rotate", "blur"]);
+const ANIMATABLE_PROPS: ReadonlySet<string> = new Set(["opacity", "x", "y", "scale", "rotate", "blur", "clip", "color"]);
+/** hex תקין: #RGB או #RRGGBB בלבד — טוקן סמנטי לא נתמך ב-color keyframe (ראו lib/experience.ts Keyframe.value) */
+const HEX_COLOR_RE = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
 const COMPOSITIONS: ReadonlySet<string> = new Set(["stage", "flow"]);
 const TRANSITIONS: ReadonlySet<string> = new Set(["cut", "fade", "crossfade", "directional"]);
 
@@ -36,18 +38,30 @@ function normalizeEasing(v: unknown, fallback: EasingId): EasingId {
   return typeof v === "string" && EASING_IDS.has(v) ? (v as EasingId) : fallback;
 }
 
-/** מסנן keyframes לא תקינים (at/value לא מספרים, NaN) וממיין לפי "at" */
-function normalizeKeyframes(raw: unknown): Keyframe[] {
+/**
+ * מסנן keyframes לא תקינים וממיין לפי "at". prop==="color": value חייב
+ * hex תקין (string); כל prop אחר: value חייב number תקין -- לא ניתן
+ * לדעת מראש איזה סוג ערך צפוי בלי לדעת לאיזה prop הרשימה הזו שייכת
+ * (Milestone B1, ראו lib/experience.ts Keyframe.value).
+ */
+function normalizeKeyframes(raw: unknown, prop: AnimatableProp): Keyframe[] {
   if (!Array.isArray(raw)) return [];
   const kfs: Keyframe[] = [];
   for (const item of raw) {
     if (typeof item !== "object" || item === null) continue;
     const r = item as Record<string, unknown>;
     if (typeof r.at !== "number" || Number.isNaN(r.at)) continue;
-    if (typeof r.value !== "number" || Number.isNaN(r.value)) continue;
+    let value: number | string;
+    if (prop === "color") {
+      if (typeof r.value !== "string" || !HEX_COLOR_RE.test(r.value)) continue;
+      value = r.value.toUpperCase();
+    } else {
+      if (typeof r.value !== "number" || Number.isNaN(r.value)) continue;
+      value = r.value;
+    }
     kfs.push({
       at: clamp01(r.at),
-      value: r.value,
+      value,
       ...(typeof r.easing === "string" && EASING_IDS.has(r.easing) ? { easing: r.easing as EasingId } : {}),
     });
   }
@@ -59,8 +73,9 @@ function normalizeProps(raw: unknown): Partial<Record<AnimatableProp, Keyframe[]
   const out: Partial<Record<AnimatableProp, Keyframe[]>> = {};
   for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
     if (!ANIMATABLE_PROPS.has(key)) continue;
-    const kfs = normalizeKeyframes(value);
-    if (kfs.length > 0) out[key as AnimatableProp] = kfs;
+    const prop = key as AnimatableProp;
+    const kfs = normalizeKeyframes(value, prop);
+    if (kfs.length > 0) out[prop] = kfs;
   }
   return out;
 }

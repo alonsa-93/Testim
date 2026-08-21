@@ -3,6 +3,7 @@ import { ExperienceProvider } from "./experience-provider";
 import { ExperienceScene } from "./experience-scene";
 import { ExperienceLayerRenderer } from "./experience-layer";
 import { ExperienceTarget } from "./experience-target";
+import { RevealManaged } from "@/components/fx/reveal";
 import type { Page } from "@/lib/page";
 import type { Theme } from "@/lib/theme";
 
@@ -29,9 +30,15 @@ export function ExperienceBlockRefLayer({
   const def = getBlockDef(block.type);
   if (!def) return null;
   const Component = def.component;
+  // Milestone B4 (docs/architecture-decision-gate.md §2): block-ref בתוך
+  // scene הוא הנקודה היחידה שבה Reveal-פנימי-של-בלוק יכול להתנגש עם
+  // Track חיצוני על אותו target -- managed מדכא את ה-Reveal (RevealManagedContext)
+  // כך ש-Track (אם קיים על ה-blockId הזה) הוא הבעלים היחיד של הכניסה.
   return (
-    <ExperienceTarget id={blockId} as="div">
-      <Component content={block.content} theme={theme} />
+    <ExperienceTarget id={blockId} as="div" managed>
+      <RevealManaged>
+        <Component content={block.content} theme={theme} />
+      </RevealManaged>
     </ExperienceTarget>
   );
 }

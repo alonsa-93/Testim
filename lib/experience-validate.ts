@@ -1,3 +1,4 @@
+import { contrastRatio, gradeContrast } from "./contrast";
 import {
   INCOMPATIBLE_TARGETS,
   PROPERTY_LABELS,
@@ -19,15 +20,29 @@ import {
 
 export interface ExperienceValidationIssue {
   sceneId: string;
-  kind: "ownership-conflict" | "incompatible-target";
+  kind: "ownership-conflict" | "incompatible-target" | "low-contrast-color";
   /** הודעה מוכנה לתצוגה בסטודיו, כבר בעברית */
   message: string;
   trackIds: string[];
   target: string;
 }
 
+/**
+ * Milestone B4 (docs/architecture-decision-gate.md §2.2): בדיקת ניגודיות
+ * ל-color tracks, דרך lib/contrast.ts הקיים — בדיוק כמו ContrastPanel
+ * בסטודיו, לא מנגנון ניגודיות שני (§19 DoD: "Experience לא מגדיר בדיקת
+ * ניגודיות משלו"). backgroundHex כבר פתור (hex סופי) ע"י ה-caller —
+ * validate.ts לא תלוי ב-Theme כדי להישאר מפורק (decoupled).
+ */
+export interface ColorContrastContext {
+  backgroundHex: string;
+}
+
 /** בודק scene יחיד — לב הלוגיקה. שימושי גם עצמאית (למשל בסטודיו, per-scene) */
-export function validateScene(scene: ExperienceScene): ExperienceValidationIssue[] {
+export function validateScene(
+  scene: ExperienceScene,
+  contrastCtx?: ColorContrastContext
+): ExperienceValidationIssue[] {
   const issues: ExperienceValidationIssue[] = [];
   const ownership = new Map<string, string[]>(); // "target.prop" -> trackIds[]
   const flaggedIncompatible = new Set<string>(); // target -- מונע כפילות אם כמה tracks פונים לאותו יעד לא-תואם
@@ -50,6 +65,22 @@ export function validateScene(scene: ExperienceScene): ExperienceValidationIssue
       owners.push(track.id);
       ownership.set(key, owners);
     }
+
+    if (contrastCtx && track.props.color) {
+      for (const kf of track.props.color) {
+        if (typeof kf.value !== "string") continue;
+        const ratio = contrastRatio(kf.value, contrastCtx.backgroundHex);
+        if (ratio !== null && gradeContrast(ratio) === "fail") {
+          issues.push({
+            sceneId: scene.id,
+            kind: "low-contrast-color",
+            target: track.target,
+            trackIds: [track.id],
+            message: `צבע ה-track "${track.id}" (${kf.value}) על "${track.target}" לא עומד בניגודיות מול הרקע (${ratio.toFixed(2)}:1, נדרש 4.5:1 לפחות).`,
+          });
+        }
+      }
+    }
   }
 
   for (const [key, trackIds] of ownership) {
@@ -67,7 +98,14 @@ export function validateScene(scene: ExperienceScene): ExperienceValidationIssue
   return issues;
 }
 
-/** בודק את כל ה-scenes בקונפיגורציה */
-export function validateExperience(config: ExperienceConfig): ExperienceValidationIssue[] {
-  return config.scenes.flatMap(validateScene);
+/**
+ * בודק את כל ה-scenes בקונפיגורציה.
+ * שימו לב: `scenes.flatMap(validateScene)` ישיר היה מעביר את ה-index
+ * של flatMap כארגומנט שני (contrastCtx!) בטעות -- לכן עטיפה מפורשת.
+ */
+export function validateExperience(
+  config: ExperienceConfig,
+  contrastCtx?: ColorContrastContext
+): ExperienceValidationIssue[] {
+  return config.scenes.flatMap((scene) => validateScene(scene, contrastCtx));
 }
