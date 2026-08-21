@@ -1,6 +1,14 @@
 "use client";
 
-import { useLayoutEffect, useRef, type CSSProperties, type ElementType, type MouseEvent, type ReactNode } from "react";
+import {
+  useLayoutEffect,
+  useRef,
+  type CSSProperties,
+  type ElementType,
+  type KeyboardEvent,
+  type MouseEvent,
+  type ReactNode,
+} from "react";
 import { useExperienceRuntime } from "./experience-provider";
 import { cn } from "@/lib/cn";
 
@@ -33,6 +41,7 @@ export function ExperienceTarget({
   managed,
   selected,
   onSelect,
+  label,
   children,
 }: {
   id: string;
@@ -57,6 +66,13 @@ export function ExperienceTarget({
    */
   selected?: boolean;
   onSelect?: (id: string) => void;
+  /**
+   * Milestone E2 (נגישות, docs/rebuild-workplan.md אבן דרך E2): תווית
+   * קריאה לאדם ("טקסט — demo-hero-title") לצריכת קורא-מסך במקום מזהה
+   * גולמי בלבד. אופציונלי -- בדף הציבורי onSelect תמיד undefined, אז
+   * זה ממילא לא נצרך שם.
+   */
+  label?: string;
   children: ReactNode;
 }) {
   const runtime = useExperienceRuntime();
@@ -79,12 +95,36 @@ export function ExperienceTarget({
         "exp-motion",
         onSelect && "cursor-pointer outline-2 outline-offset-2",
         onSelect && (selected ? "outline-indigo-500" : "outline-transparent hover:outline-indigo-300"),
+        // Milestone E2: focus-visible תמיד מקבל טבעת ברורה משלו, גם כשלא
+        // selected/hover -- מקלדת חייבת אינדיקציה עצמאית, לא רק תלויה
+        // ב-mouse hover שלעולם לא קורה בניווט מקלדת.
+        onSelect && "focus-visible:outline-indigo-500",
         className
       )}
       style={style}
+      // Milestone E2 (נגישות, docs/rebuild-workplan.md אבן דרך E2): בחירה-
+      // על-קנבס (Milestone D1) הייתה לחיצת עכבר בלבד -- אין דרך מקלדת
+      // מקבילה ללחוץ Tab ולבחור שכבה. tabIndex/role/onKeyDown הופכים כל
+      // target נבחר ל"כפתור" נגיש: Tab מגיע אליו, Enter/Space בוחרים
+      // אותו, בדיוק כמו קליק. undefined תמיד כש-onSelect לא קיים (דף
+      // ציבורי/block-ref) -- לא נוסף שום תג נגישות מיותר שם.
+      tabIndex={onSelect ? 0 : undefined}
+      role={onSelect ? "button" : undefined}
+      aria-pressed={onSelect ? selected : undefined}
+      aria-label={onSelect ? (label ?? id) : undefined}
       onClick={
         onSelect
           ? (e: MouseEvent) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onSelect(id);
+            }
+          : undefined
+      }
+      onKeyDown={
+        onSelect
+          ? (e: KeyboardEvent) => {
+              if (e.key !== "Enter" && e.key !== " ") return;
               e.preventDefault();
               e.stopPropagation();
               onSelect(id);

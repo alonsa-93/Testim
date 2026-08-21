@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it } from "vitest";
-import { cleanup, render } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render } from "@testing-library/react";
 import { ExperienceProvider } from "@/components/experience/experience-provider";
 import { ExperienceLayerRenderer } from "@/components/experience/experience-layer";
 import type { ExperienceLayer } from "@/lib/experience";
@@ -168,5 +168,86 @@ describe("ExperienceLayerRenderer — Responsive<boolean> hidden (Milestone E1)"
   it("is skipped on mobile when the mobile override is true", () => {
     const { container } = renderWithMode(layer({ hidden: { base: false, mobile: true } }), "mobile");
     expect(container.querySelector("[data-experience-target]")).toBeNull();
+  });
+});
+
+/**
+ * Milestone E2 (נגישות, docs/rebuild-workplan.md אבן דרך E2) — בחירה-
+ * על-קנבס (Milestone D1) הייתה נגישה בלחיצת עכבר בלבד. כאן: Tab מגיע,
+ * Enter/Space בוחרים בדיוק כמו קליק, מקש אחר לא עושה כלום, ותווית
+ * קריאה-לאדם מוחלפת במקום מזהה גולמי.
+ */
+describe("ExperienceLayerRenderer — keyboard-accessible canvas selection (Milestone E2)", () => {
+  afterEach(cleanup);
+
+  function renderSelectable(l: ExperienceLayer, onSelect: (id: string) => void) {
+    return render(
+      <ExperienceProvider config={undefined}>
+        <ExperienceLayerRenderer layer={l} selected={false} onSelect={onSelect} />
+      </ExperienceProvider>
+    );
+  }
+
+  it("is not focusable/interactive at all when onSelect is not provided (public page)", () => {
+    const { container } = renderLayer(layer({ id: "l1" }));
+    const el = container.querySelector("[data-experience-target]")!;
+    expect(el.getAttribute("tabindex")).toBeNull();
+    expect(el.getAttribute("role")).toBeNull();
+  });
+
+  it("exposes tabIndex=0 and role=button when onSelect is provided (Studio canvas)", () => {
+    const { container } = renderSelectable(layer({ id: "l1" }), vi.fn());
+    const el = container.querySelector("[data-experience-target]")!;
+    expect(el.getAttribute("tabindex")).toBe("0");
+    expect(el.getAttribute("role")).toBe("button");
+  });
+
+  it("selects the layer on Enter, same as a click", () => {
+    const onSelect = vi.fn();
+    const { container } = renderSelectable(layer({ id: "my-layer" }), onSelect);
+    const el = container.querySelector("[data-experience-target]")!;
+    fireEvent.keyDown(el, { key: "Enter" });
+    expect(onSelect).toHaveBeenCalledWith("my-layer");
+  });
+
+  it("selects the layer on Space, same as a click", () => {
+    const onSelect = vi.fn();
+    const { container } = renderSelectable(layer({ id: "my-layer" }), onSelect);
+    const el = container.querySelector("[data-experience-target]")!;
+    fireEvent.keyDown(el, { key: " " });
+    expect(onSelect).toHaveBeenCalledWith("my-layer");
+  });
+
+  it("ignores unrelated keys", () => {
+    const onSelect = vi.fn();
+    const { container } = renderSelectable(layer({ id: "my-layer" }), onSelect);
+    const el = container.querySelector("[data-experience-target]")!;
+    fireEvent.keyDown(el, { key: "Tab" });
+    fireEvent.keyDown(el, { key: "a" });
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it("carries a human-readable aria-label (layer type + id), not just the raw id", () => {
+    const { container } = renderSelectable(layer({ id: "demo-hero-title", type: "text" }), vi.fn());
+    const el = container.querySelector("[data-experience-target]")!;
+    expect(el.getAttribute("aria-label")).toBe("טקסט — demo-hero-title");
+  });
+
+  it("reflects selection state via aria-pressed", () => {
+    const { container, rerender } = render(
+      <ExperienceProvider config={undefined}>
+        <ExperienceLayerRenderer layer={layer({ id: "l1" })} selected={false} onSelect={() => {}} />
+      </ExperienceProvider>
+    );
+    let el = container.querySelector("[data-experience-target]")!;
+    expect(el.getAttribute("aria-pressed")).toBe("false");
+
+    rerender(
+      <ExperienceProvider config={undefined}>
+        <ExperienceLayerRenderer layer={layer({ id: "l1" })} selected onSelect={() => {}} />
+      </ExperienceProvider>
+    );
+    el = container.querySelector("[data-experience-target]")!;
+    expect(el.getAttribute("aria-pressed")).toBe("true");
   });
 });

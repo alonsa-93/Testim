@@ -9,6 +9,7 @@ import { ShapeLayer } from "./layers/shape-layer";
 import { ButtonLayer } from "./layers/button-layer";
 import { BlockLayer } from "./layers/block-layer";
 import {
+  LAYER_TYPE_LABELS,
   layerLayoutStyle,
   resolveResponsive,
   type BlockLayerContent,
@@ -58,7 +59,13 @@ export function ExperienceLayerRenderer({
   if (inner === null) return null;
 
   return (
-    <ExperienceTarget id={layer.id} style={style} selected={selected} onSelect={onSelect}>
+    <ExperienceTarget
+      id={layer.id}
+      style={style}
+      selected={selected}
+      onSelect={onSelect}
+      label={onSelect ? `${LAYER_TYPE_LABELS[layer.type]} — ${layer.id}` : undefined}
+    >
       {inner}
     </ExperienceTarget>
   );
