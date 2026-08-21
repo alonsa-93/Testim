@@ -47,8 +47,11 @@ import {
   TextField,
 } from "@/components/studio/controls";
 import { ContrastPanel } from "@/components/studio/contrast-panel";
-import { ExperienceEditor } from "@/components/studio/experience-editor";
+import { ExperienceSceneList } from "@/components/studio/experience-scene-list";
+import { ExperienceSettingsPanel } from "@/components/studio/experience-settings-panel";
+import { ExperienceSceneEditor } from "@/components/studio/experience-scene-editor";
 import { ExperienceLivePreview } from "@/components/studio/experience-live-preview";
+import { validateExperience } from "@/lib/experience-validate";
 import { emptyExperience, newSceneId, type ExperienceScene } from "@/lib/experience";
 
 const THEME_DRAFT_KEY = "testim-studio-draft";
@@ -436,6 +439,9 @@ export function StudioApp() {
   const isPill = theme.shape.buttonRadius >= PILL_RADIUS;
   const selectedBlock = page.blocks.find((b) => b.id === selectedBlockId) ?? null;
   const activeTheme = themes.find((t) => t.id === baseId);
+  // Milestone D3 (עריכה קונטקסטואלית) — נגזרים לפאנל RIGHT של Experience mode
+  const selectedScene = page.experience?.scenes.find((s) => s.id === selectedSceneId) ?? null;
+  const experienceIssues = page.experience ? validateExperience(page.experience) : [];
 
   // איפוס שדה-בודד (↺) לפקדי הערכה: "שונה" = הערך הנוכחי שונה מהערכה
   // הטעונה כבסיס (activeTheme). בלי בסיס ידוע (ערכה מיובאת) — אין מה
@@ -509,6 +515,33 @@ export function StudioApp() {
             → חזרה לאתר
           </Link>
           <h1 className="text-lg font-bold">סטודיו הדפים</h1>
+          {/* Milestone D2 (docs/studio-ux-simplification.md §3): בורר מצב
+              העמוד עבר ל-TOP (header) — נשאר גלוי תמיד בלי קשר לאיזה IA
+              מוצג מתחתיו (שני פאנלים ל-Standard, שלושה ל-Experience). */}
+          <div className="flex items-center gap-1 rounded-lg bg-slate-100 p-1" role="group" aria-label="מצב עמוד">
+            <button
+              type="button"
+              onClick={() => setExperienceEnabled(false)}
+              aria-pressed={!experienceMode}
+              className={`cursor-pointer rounded-md px-3 py-1.5 text-sm font-bold ${
+                !experienceMode ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-900"
+              }`}
+            >
+              עמוד רגיל
+            </button>
+            <button
+              type="button"
+              onClick={() => setExperienceEnabled(true)}
+              aria-pressed={experienceMode}
+              className={`cursor-pointer rounded-md px-3 py-1.5 text-sm font-bold ${
+                experienceMode
+                  ? "bg-gradient-to-r from-indigo-600 to-fuchsia-600 text-white"
+                  : "text-slate-500 hover:text-slate-900"
+              }`}
+            >
+              חוויית גלילה
+            </button>
+          </div>
         </div>
 
         <div className="hidden items-center gap-2 md:flex">
@@ -613,61 +646,8 @@ export function StudioApp() {
       )}
 
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-        {/* פאנל העריכה */}
+       {!experienceMode && (
         <aside className="flex max-h-[48dvh] w-full shrink-0 flex-col border-b border-slate-200 bg-white lg:max-h-none lg:w-[380px] lg:border-b-0 lg:border-e">
-          {/* בורר מצב עמוד (§1 במסמך התיקון הסופי): Standard (Mode A) לעומת
-              Scroll Experience (Mode B) — שני "אפליקציות" נפרדות לגמרי בפאנל
-              העריכה, לא עוד טאב בתוך אותה רשימה. תמיד מוצג (לא רק כש-
-              page.experience כבר קיים!): זו הדרך היחידה להגיע בכלל למסך
-              "הפעלת חוויית גלילה" (empty state בתוך ExperienceEditor) --
-              דף טרי בלי experience חייב נקודת כניסה, אחרת אין שום דרך
-              להפעיל Experience מהסטודיו בפעם הראשונה (נתפס לפני שהגיע
-              לאימות בדפדפן אמיתי). */}
-          <div className="flex shrink-0 gap-1 border-b border-slate-200 bg-slate-50 p-2">
-              <button
-                type="button"
-                onClick={() => setExperienceEnabled(false)}
-                aria-pressed={!experienceMode}
-                className={`flex-1 cursor-pointer rounded-md px-3 py-2 text-sm font-bold ${
-                  !experienceMode ? "bg-slate-900 text-white" : "text-slate-500 hover:bg-slate-100"
-                }`}
-              >
-                עמוד רגיל
-              </button>
-              <button
-                type="button"
-                onClick={() => setExperienceEnabled(true)}
-                aria-pressed={experienceMode}
-                className={`flex-1 cursor-pointer rounded-md px-3 py-2 text-sm font-bold ${
-                  experienceMode
-                    ? "bg-gradient-to-r from-indigo-600 to-fuchsia-600 text-white"
-                    : "text-slate-500 hover:bg-slate-100"
-                }`}
-              >
-                חוויית גלילה
-              </button>
-          </div>
-
-          {experienceMode ? (
-            <div className="min-h-0 flex-1 overflow-y-auto p-5">
-              <ExperienceEditor
-                config={page.experience}
-                onChange={(next) =>
-                  setPage((p) => ({
-                    ...p,
-                    experience: typeof next === "function" ? next(p.experience ?? emptyExperience()) : next,
-                  }))
-                }
-                selectedSceneId={selectedSceneId}
-                onSelectScene={setSelectedSceneId}
-                selectedLayerId={selectedLayerId}
-                onSelectLayer={setSelectedLayerId}
-                imagePreviewOverrides={imagePreviewOverrides}
-                onSetImagePreview={setImagePreview}
-              />
-            </div>
-          ) : (
-            <>
           <div className="flex shrink-0 gap-1 border-b border-slate-200 p-2">
             {(
               [
@@ -1125,11 +1105,11 @@ export function StudioApp() {
               </>
             )}
           </div>
-            </>
-          )}
         </aside>
+       )}
 
         {/* תצוגה חיה */}
+       {!experienceMode && (
         <main className="min-w-0 flex-1 overflow-auto p-3 md:p-6">
           <div
             className="mx-auto transition-all duration-300"
@@ -1161,41 +1141,7 @@ export function StudioApp() {
                 className="[transform:translateZ(0)]"
                 motionOff={typing}
               >
-                {experienceMode ? (
-                  page.experience && page.experience.scenes.length > 0 ? (
-                    <ExperienceLivePreview
-                      page={page}
-                      theme={theme}
-                      selectedSceneId={selectedSceneId}
-                      onSelectScene={setSelectedSceneId}
-                      mode={viewport === "desktop" ? "base" : viewport}
-                      imagePreviewOverrides={imagePreviewOverrides}
-                    />
-                  ) : (
-                    <div className="px-10 py-16 text-center">
-                      <p className="text-lg font-bold text-slate-800">
-                        בחרו תבנית פתיחה — ותראו אותה זזה מיד
-                      </p>
-                      <p className="mx-auto mt-1 max-w-md text-sm text-slate-500">
-                        כל תבנית היא סצנה אמיתית וניתנת לעריכה מלאה. אפשר גם
-                        להתחיל מסצנה ריקה דרך ״+ הוספת סצנה״ בפאנל.
-                      </p>
-                      <div className="mx-auto mt-6 grid max-w-2xl grid-cols-2 gap-3 md:grid-cols-3">
-                        {EXPERIENCE_PRESETS.map((preset) => (
-                          <button
-                            key={preset.id}
-                            type="button"
-                            onClick={() => addFirstScene(preset.scene)}
-                            className="cursor-pointer rounded-xl border border-slate-200 bg-white p-4 text-start shadow-sm transition-all hover:-translate-y-0.5 hover:border-indigo-400 hover:shadow-md"
-                          >
-                            <span className="block text-sm font-bold text-slate-900">{preset.label}</span>
-                            <span className="mt-1 block text-xs leading-relaxed text-slate-500">{preset.description}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )
-                ) : page.blocks.length > 0 ? (
+                {page.blocks.length > 0 ? (
                   <PageRenderer page={page} theme={theme} />
                 ) : (
                   <div className="px-10 py-16 text-center">
@@ -1224,6 +1170,141 @@ export function StudioApp() {
             </div>
           </div>
         </main>
+       )}
+
+       {/* Milestone D (docs/studio-ux-simplification.md §3) — Canvas-first
+           IA ל-Experience mode: LEFT (מבנה, תמיד גלוי) / CENTER (קנבס
+           דומיננטי) / RIGHT (מאפיינים קונטקסטואלי, תלוי בחירה). מחליף
+           לגמרי את aside+main של Standard כש-experienceMode פעיל —
+           Standard לא נגע כלל (לב הדרישה: "אפס רגרסיה ב-Standard"). */}
+       {experienceMode && page.experience && (
+        <>
+          {/* LEFT — מבנה: רשימת סצנות, תמיד גלויה (ולא נעלמת כשסצנה נבחרת —
+              זה ההבדל המבני מה-IA הישן) */}
+          <aside className="flex max-h-[40dvh] w-full shrink-0 flex-col border-b border-slate-200 bg-white lg:max-h-none lg:w-[260px] lg:border-b-0 lg:border-e">
+            <div className="min-h-0 flex-1 overflow-y-auto p-4">
+              <ExperienceSceneList
+                config={page.experience}
+                onChange={(next) =>
+                  setPage((p) => ({
+                    ...p,
+                    experience: typeof next === "function" ? next(p.experience ?? emptyExperience()) : next,
+                  }))
+                }
+                selectedSceneId={selectedSceneId}
+                onSelectScene={setSelectedSceneId}
+                onSelectLayer={setSelectedLayerId}
+                onSetImagePreview={setImagePreview}
+                onDisable={() => {
+                  if (
+                    !window.confirm(
+                      "לכבות את חוויית הגלילה ולחזור לתצוגה הרגילה של הדף? הנתונים לא נמחקים."
+                    )
+                  )
+                    return;
+                  setPage((p) => ({ ...p, experience: { ...(p.experience ?? emptyExperience()), enabled: false } }));
+                }}
+              />
+            </div>
+          </aside>
+
+          {/* CENTER — הקנבס: אותה מסגרת "דפדפן" בדיוק כמו Standard, כדי
+              שהמעבר בין מצבים לא ירגיש כמו אפליקציה אחרת */}
+          <main className="min-w-0 flex-1 overflow-auto p-3 md:p-6">
+            <div className="mx-auto transition-all duration-300" style={{ maxWidth: viewports[viewport].width }}>
+              <div className="overflow-clip rounded-xl border border-slate-300 bg-white shadow-lg">
+                <div className="flex items-center gap-1.5 border-b border-slate-200 bg-slate-50 px-4 py-2.5">
+                  <span className="size-2.5 rounded-full bg-slate-300" aria-hidden="true" />
+                  <span className="size-2.5 rounded-full bg-slate-300" aria-hidden="true" />
+                  <span className="size-2.5 rounded-full bg-slate-300" aria-hidden="true" />
+                  <span className="ms-3 truncate text-xs font-medium text-slate-400">
+                    {page.name} · {theme.name}
+                  </span>
+                </div>
+                <ThemeScope key={replayKey} theme={theme} className="[transform:translateZ(0)]" motionOff={typing}>
+                  {page.experience.scenes.length > 0 ? (
+                    <ExperienceLivePreview
+                      page={page}
+                      theme={theme}
+                      selectedSceneId={selectedSceneId}
+                      onSelectScene={setSelectedSceneId}
+                      selectedLayerId={selectedLayerId}
+                      onSelectLayer={setSelectedLayerId}
+                      mode={viewport === "desktop" ? "base" : viewport}
+                      imagePreviewOverrides={imagePreviewOverrides}
+                    />
+                  ) : (
+                    <div className="px-10 py-16 text-center">
+                      <p className="text-lg font-bold text-slate-800">
+                        בחרו תבנית פתיחה — ותראו אותה זזה מיד
+                      </p>
+                      <p className="mx-auto mt-1 max-w-md text-sm text-slate-500">
+                        כל תבנית היא סצנה אמיתית וניתנת לעריכה מלאה. אפשר גם
+                        להתחיל מסצנה ריקה דרך ״+ הוספת סצנה״ בפאנל השמאלי.
+                      </p>
+                      <div className="mx-auto mt-6 grid max-w-2xl grid-cols-2 gap-3 md:grid-cols-3">
+                        {EXPERIENCE_PRESETS.map((preset) => (
+                          <button
+                            key={preset.id}
+                            type="button"
+                            onClick={() => addFirstScene(preset.scene)}
+                            className="cursor-pointer rounded-xl border border-slate-200 bg-white p-4 text-start shadow-sm transition-all hover:-translate-y-0.5 hover:border-indigo-400 hover:shadow-md"
+                          >
+                            <span className="block text-sm font-bold text-slate-900">{preset.label}</span>
+                            <span className="mt-1 block text-xs leading-relaxed text-slate-500">{preset.description}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </ThemeScope>
+              </div>
+            </div>
+          </main>
+
+          {/* RIGHT — מאפיינים קונטקסטואלי (Milestone D3): כלום לא נבחר →
+              הגדרות החוויה; סצנה נבחרת → ExperienceSceneEditor (שגם דואג
+              בעצמו לדרילדאון לשכבה/track — לא שוכתב, רק הוזז לכאן) */}
+          <aside className="flex max-h-[40dvh] w-full shrink-0 flex-col border-t border-slate-200 bg-white lg:max-h-none lg:w-[320px] lg:border-t-0 lg:border-s">
+            <div className="min-h-0 flex-1 overflow-y-auto p-4">
+              {selectedScene ? (
+                <ExperienceSceneEditor
+                  scene={selectedScene}
+                  settings={page.experience.settings}
+                  onChange={(next) =>
+                    setPage((p) => ({
+                      ...p,
+                      experience: {
+                        ...(p.experience ?? emptyExperience()),
+                        scenes: (p.experience?.scenes ?? []).map((s) => (s.id === next.id ? next : s)),
+                      },
+                    }))
+                  }
+                  onBack={() => {
+                    setSelectedSceneId(null);
+                    setSelectedLayerId(null);
+                  }}
+                  selectedLayerId={selectedLayerId}
+                  onSelectLayer={setSelectedLayerId}
+                  issues={experienceIssues.filter((i) => i.sceneId === selectedScene.id)}
+                  imagePreviewOverrides={imagePreviewOverrides}
+                  onSetImagePreview={setImagePreview}
+                />
+              ) : (
+                <ExperienceSettingsPanel
+                  config={page.experience}
+                  onChange={(next) =>
+                    setPage((p) => ({
+                      ...p,
+                      experience: typeof next === "function" ? next(p.experience ?? emptyExperience()) : next,
+                    }))
+                  }
+                />
+              )}
+            </div>
+          </aside>
+        </>
+       )}
       </div>
 
       {/* מודאל ⚙ הגדרות דף וערכה — הבית החדש של כל השדות החד-פעמיים
