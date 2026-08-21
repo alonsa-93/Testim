@@ -25,7 +25,7 @@ export default function ScrollExperienceDemoPage() {
   const theme = getTheme(page.themeId) ?? getDefaultTheme();
 
   return (
-    <ThemeScope theme={theme}>
+    <ThemeScope theme={theme} suppressFx>
       <a
         href="#experience-main"
         className="sr-only z-50 rounded-btn bg-primary px-4 py-2 text-on-primary focus:not-sr-only focus:absolute focus:top-3 focus:start-3"
