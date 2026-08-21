@@ -135,6 +135,13 @@ export function ExperienceLayerInspector({
             <TextField label="מיקום אופקי (x)" dir="ltr" value={layout.x ?? ""} onChange={(v) => setLayout({ x: v || undefined })} hint='למשל "50%"' />
             <TextField label="מיקום אנכי (y)" dir="ltr" value={layout.y ?? ""} onChange={(v) => setLayout({ y: v || undefined })} hint='למשל "40%"' />
             <TextField label="רוחב" dir="ltr" value={layout.width ?? ""} onChange={(v) => setLayout({ width: v || undefined })} hint='למשל "min(90vw, 48rem)"' />
+            {layer.type === "shape" && (
+              // Milestone G: shape layer ריק ממלא 100% מה-wrapper שלו --
+              // בלי height מפורש הוא ריבוע לפי הרוחב (ברירת מחדל אוטומטית,
+              // ראו ExperienceLayerRenderer); כאן מאפשרים לדרוס לצורת
+              // מלבן/פאנל רחב שאינו ריבועי (למשל רקע בהיר מאחורי תוכן).
+              <TextField label="גובה" dir="ltr" value={layout.height ?? ""} onChange={(v) => setLayout({ height: v || undefined })} hint='למשל "60vh" — ריק = ריבוע לפי הרוחב' />
+            )}
             <SelectField label="נקודת עוגן" value={layout.anchor ?? "center"} onChange={(v) => setLayout({ anchor: v as LayerAnchor })} options={ANCHOR_OPTIONS as Array<{ value: string; label: string }>} />
             {layout.mode === "stage" && (
               <SelectField label="שכבת עומק" value={layout.zIndex ?? "content"} onChange={(v) => setLayout({ zIndex: v as LayerZLayer })} options={Z_OPTIONS} />

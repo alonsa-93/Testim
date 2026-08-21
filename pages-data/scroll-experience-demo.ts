@@ -388,6 +388,10 @@ const multiLayerScene: ExperienceScene = {
         x: "50%",
         y: "50%",
         width: "70vw",
+        // Milestone G: height מפורש -- בלי זה (LayerLayout.height, תיקון
+        // באג אמיתי) ה-shape הזה עמד תמיד בגובה 0px (בלתי-נראה לגמרי,
+        // למרות opacity/צבע נכונים). כפאנל-רקע רחב מתחת לתוכן, לא ריבוע.
+        height: "58vh",
         anchor: "center",
         zIndex: "background",
       },

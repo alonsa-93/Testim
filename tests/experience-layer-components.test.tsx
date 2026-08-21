@@ -76,6 +76,50 @@ describe("Shape layer", () => {
     const shapeEl = container.querySelector('[aria-hidden="true"].rounded-full');
     expect(shapeEl).toBeTruthy();
   });
+
+  /**
+   * Milestone G — real, previously-unnoticed bug: a shape layer is an
+   * empty <div> filling 100% of its ExperienceTarget wrapper; in stage
+   * mode that wrapper is absolutely positioned with only `width` set
+   * (LayerLayout has no height), so percentage height against an
+   * auto-height parent computed to 0 -- every shape in this codebase
+   * (demo, presets) rendered with zero visible area despite correct
+   * opacity/color. ExperienceLayerRenderer now defaults stage-mode
+   * shapes with no explicit layout.height to aspect-ratio:1.
+   */
+  it("defaults to aspect-ratio:1 in stage mode when no explicit height is set (Milestone G fix)", () => {
+    const { container } = renderLayer(
+      layer({ type: "shape", content: { shape: "circle" }, layout: { mode: "stage", width: "40vmax" } })
+    );
+    const wrapper = container.querySelector("[data-experience-target]") as HTMLElement;
+    // jsdom normalizes the CSSOM value to "1 / 1"; the source sets "1" (both valid CSS)
+    expect(wrapper.style.aspectRatio).toBe("1 / 1");
+  });
+
+  it("does not force aspect-ratio when an explicit layout.height is given", () => {
+    const { container } = renderLayer(
+      layer({ type: "shape", content: { shape: "rect" }, layout: { mode: "stage", width: "70vw", height: "58vh" } })
+    );
+    const wrapper = container.querySelector("[data-experience-target]") as HTMLElement;
+    expect(wrapper.style.aspectRatio).toBe("");
+    expect(wrapper.style.height).toBe("58vh");
+  });
+
+  it("does not force aspect-ratio in flow mode (shapes aren't used there today, but the default shouldn't leak in)", () => {
+    const { container } = renderLayer(
+      layer({ type: "shape", content: { shape: "circle" }, layout: { mode: "flow", width: "10rem" } })
+    );
+    const wrapper = container.querySelector("[data-experience-target]") as HTMLElement;
+    expect(wrapper.style.aspectRatio).toBe("");
+  });
+
+  it("never applies the shape aspect-ratio default to other layer types (text/image/button want natural height)", () => {
+    const { container } = renderLayer(
+      layer({ type: "text", content: { text: "x", tag: "p" }, layout: { mode: "stage", width: "40vmax" } })
+    );
+    const wrapper = container.querySelector("[data-experience-target]") as HTMLElement;
+    expect(wrapper.style.aspectRatio).toBe("");
+  });
 });
 
 describe("Button layer", () => {

@@ -1,5 +1,6 @@
 import type { Page } from "@/lib/page";
 import demo from "./demo.json";
+import { kerenLightingPage } from "./keren-lighting";
 
 /**
  * רישום הדפים של המערכת.
@@ -11,8 +12,12 @@ import demo from "./demo.json";
  *
  * הערה: תוכן שלא מוגדר בקובץ הדף נלקח מברירות המחדל של הבלוק,
  * ולכן content ריק ({}) הוא תקין לגמרי ומרנדר את תוכן הדוגמה.
+ *
+ * keren-lighting.ts (Milestone G, docs/rebuild-workplan.md אבן דרך G):
+ * הדמו האיכותי -- דף Experience אמיתי, לא route מיוחד, כדי להוכיח את
+ * צינור הפרסום המלא (הרישום כאן -> /p/keren) שתוקן ב-Milestone F1.
  */
-export const pages: Page[] = [demo as Page];
+export const pages: Page[] = [demo as Page, kerenLightingPage];
 
 export const defaultPageId = "demo";
 

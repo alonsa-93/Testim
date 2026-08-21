@@ -68,6 +68,29 @@ describe("layerLayoutStyle — flow mode", () => {
   });
 });
 
+/**
+ * Milestone G (docs/rebuild-workplan.md אבן דרך G) — LayerLayout.height,
+ * תיקון באג אמיתי: shape layer (<div> ריק, size-full) ב-stage mode עם
+ * width בלבד עמד תמיד בגובה 0px (percentage height כנגד הורה עם
+ * height:auto מחושב ל-0, לא "כמו הרוחב"). ראו גם
+ * ExperienceLayerRenderer (components/experience/experience-layer.tsx)
+ * לברירת המחדל aspect-ratio:1 שמשלימה את זה עבור shape layers כשלא
+ * הוגדר height מפורש.
+ */
+describe("layerLayoutStyle — height (Milestone G)", () => {
+  it("applies an explicit height in stage mode", () => {
+    expect(layerLayoutStyle({ mode: "stage", width: "70vw", height: "58vh" }).height).toBe("58vh");
+  });
+
+  it("omits height entirely when not specified (backward compatible -- no forced default at this layer)", () => {
+    expect(layerLayoutStyle({ mode: "stage", width: "40vmax" }).height).toBeUndefined();
+  });
+
+  it("applies height in flow mode too, not just stage", () => {
+    expect(layerLayoutStyle({ mode: "flow", height: "20rem" }).height).toBe("20rem");
+  });
+});
+
 describe("layerStyleToCss — semantic color resolution", () => {
   // Milestone B4 (docs/architecture-decision-gate.md §2): color תמיד
   // עוטף ב-var(--exp-color, <fallback>) כדי ש-Track יוכל לדרוס אותו --

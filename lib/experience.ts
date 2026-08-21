@@ -214,6 +214,18 @@ export interface LayerLayout {
   x?: string;
   y?: string;
   width?: string;
+  /**
+   * Milestone G (docs/rebuild-workplan.md אבן דרך G) — תיקון באג אמיתי
+   * שנמצא תוך כדי בניית הדמו: shape layer הוא <div> ריק שממלא 100%
+   * מה-wrapper שלו (ExperienceTarget, size-full); ב-stage mode ה-wrapper
+   * ממוקם absolute עם width בלבד, בלי height מפורש -- ו-height:100% על
+   * הורה עם height:auto מחושב ל-0 (לא "כמו הרוחב"). כל shape שהוגדר עד
+   * כה רק עם width (כל ה-presets, הדמו הישן) רינדר בגובה 0 -- קיים ב-DOM,
+   * צבע/opacity נכונים, אבל בלי שטח נראה לצייר עליו בכלל. אופציונלי
+   * ותאימות-לאחור מלאה: כשלא מוגדר, ExperienceLayerRenderer נופל לברירת
+   * מחדל אחת-לאחת (aspect-ratio:1) ל-shape layers בלבד -- ראו שם.
+   */
+  height?: string;
   maxWidth?: string;
   anchor?: LayerAnchor;
   zIndex?: LayerZLayer;
@@ -283,6 +295,7 @@ export function layerLayoutStyle(layout: LayerLayout): Record<string, string | n
     if (layout.zIndex) style.zIndex = Z_LAYER_ORDER[layout.zIndex];
   }
   if (layout.width) style.width = layout.width;
+  if (layout.height) style.height = layout.height;
   if (layout.maxWidth) style.maxWidth = layout.maxWidth;
   if (layout.anchor) {
     style.transformOrigin = ANCHOR_ORIGIN[layout.anchor];
