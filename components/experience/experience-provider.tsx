@@ -4,6 +4,7 @@ import { createContext, useContext, useLayoutEffect, useRef, useState, type Reac
 import { ExperienceRuntime } from "./experience-runtime";
 import { findScrollRoot } from "@/lib/scroll-root";
 import { useReducedMotion } from "@/components/fx/use-reduced-motion";
+import { useResponsiveMode } from "./use-responsive-mode";
 import type { ExperienceConfig, ResponsiveMode } from "@/lib/experience";
 import { emptyExperience } from "@/lib/experience";
 
@@ -45,20 +46,29 @@ export function useExperienceDebug(): boolean {
 
 export function ExperienceProvider({
   config,
-  mode = "base",
+  mode,
   children,
 }: {
   /** undefined = אין Experience בדף הזה בכלל; runtime עדיין נוצר אך אף פעם לא attach */
   config: ExperienceConfig | undefined;
+  /**
+   * Milestone E1: אופציונלי בכוונה. כשנקרא בלי mode מפורש (experience-page.tsx,
+   * הדף הציבורי) -- נופל ל-useResponsiveMode() האמיתי, לפי רוחב ה-viewport
+   * בפועל של המבקר. הסטודיו (experience-live-preview.tsx) תמיד מזין mode
+   * מפורש (מתג ה-viewport הידני) כדי להישאר דטרמיניסטי -- לא תלוי ברוחב
+   * חלון הדפדפן של מי שעורך, שאין לו קשר לרוחב שבו יראו את הדף המפורסם.
+   */
   mode?: ResponsiveMode;
   children: ReactNode;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const reducedMotion = useReducedMotion();
+  const autoMode = useResponsiveMode();
+  const resolvedMode = mode ?? autoMode;
 
-  const [runtime] = useState(() => new ExperienceRuntime(config ?? emptyExperience(), mode));
+  const [runtime] = useState(() => new ExperienceRuntime(config ?? emptyExperience(), resolvedMode));
   runtime.updateConfig(config ?? emptyExperience());
-  runtime.updateMode(mode);
+  runtime.updateMode(resolvedMode);
 
   const enabled = Boolean(config?.enabled);
 
@@ -75,10 +85,10 @@ export function ExperienceProvider({
     const scrollRoot = findScrollRoot(anchor);
     runtime.attach(scrollRoot);
     return () => runtime.detach();
-  }, [runtime, enabled, reducedMotion, mode]);
+  }, [runtime, enabled, reducedMotion, resolvedMode]);
 
   return (
-    <ExperienceContext.Provider value={{ runtime, mode, debug: Boolean(config?.settings.debug) }}>
+    <ExperienceContext.Provider value={{ runtime, mode: resolvedMode, debug: Boolean(config?.settings.debug) }}>
       {/*
         display:contents -- עוגן DOM טהור ל-findScrollRoot, לא משפיע על layout בכלל.
         data-experience-active (רק כש-enabled && !reducedMotion, בדיוק כמו תנאי

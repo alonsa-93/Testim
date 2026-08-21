@@ -354,7 +354,14 @@ export interface ExperienceLayer {
   content: LayerContent;
   layout: Responsive<LayerLayout>;
   style?: LayerStyle;
-  hidden?: boolean;
+  /**
+   * Milestone E1 (רספונסיב אמיתי, לא רק pipe ריק): Responsive<boolean>
+   * ולא boolean פשוט -- מאפשר "mobile סיפור מפושט" אמיתי, כלומר להסתיר
+   * שכבה דקורטיבית-בלבד רק בנייד/טאבלט בלי לגעת ב-desktop. `resolveResponsive`
+   * (עם `false` כברירת מחדל כשהשדה כולו נעדר) פותר את זה בדיוק כמו layout/
+   * durationVh -- אין מנגנון שני.
+   */
+  hidden?: Responsive<boolean>;
 }
 
 // ---------------------------------------------------------------------------

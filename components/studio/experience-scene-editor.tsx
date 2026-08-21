@@ -4,6 +4,7 @@ import { useState } from "react";
 import {
   LAYER_TYPE_LABELS,
   newLayerId,
+  resolveResponsive,
   type ExperienceLayer,
   type ExperienceScene,
   type ExperienceSettings,
@@ -200,7 +201,11 @@ export function ExperienceSceneEditor({
                 <span className="block text-sm font-semibold text-slate-800">
                   {LAYER_TYPE_LABELS[layer.type]} · {layer.id}
                 </span>
-                {layer.hidden && <span className="text-xs text-slate-400">מוסתרת</span>}
+                {/* Milestone E1: hidden הפך ל-Responsive<boolean> -- resolveResponsive
+                    (לא truthy-check גולמי על אובייקט, שהיה תמיד true) */}
+                {resolveResponsive(layer.hidden ?? false, "base") && (
+                  <span className="text-xs text-slate-400">מוסתרת</span>
+                )}
               </button>
               <button type="button" onClick={() => moveLayer(i, i - 1)} disabled={i === 0} aria-label="למעלה" className={rowBtn}>
                 ↑

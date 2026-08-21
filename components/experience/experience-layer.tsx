@@ -49,7 +49,7 @@ export function ExperienceLayerRenderer({
   onSelect?: (id: string) => void;
 }) {
   const mode = useExperienceMode();
-  if (layer.hidden) return null;
+  if (resolveResponsive(layer.hidden ?? false, mode)) return null;
 
   const layout = resolveResponsive(layer.layout, mode);
   const style = layerLayoutStyle(layout) as CSSProperties;
