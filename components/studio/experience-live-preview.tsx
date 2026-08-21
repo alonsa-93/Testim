@@ -44,7 +44,6 @@ export function ExperienceLivePreview({
 
   return (
     <ExperienceProvider config={config} mode={mode}>
-      <TimelineOverlay config={config} selectedSceneId={selectedSceneId} onSelectScene={onSelectScene} />
       {config.scenes.map((scene) => (
         <ExperienceScene
           key={scene.id}
@@ -63,8 +62,26 @@ export function ExperienceLivePreview({
           {scene.blockRefs?.map((blockId) => (
             <ExperienceBlockRefLayer key={blockId} blockId={blockId} blocks={page.blocks} theme={theme} />
           ))}
+          {scene.layers.length === 0 && !scene.blockRefs?.length && (
+            /* מצב-ריק בתוך הקנבס (ממצא ה-walkthrough: "סצנה ריקה" נראתה
+               כמו באג — קנבס לבן מת). סטודיו בלבד: הרכיב הזה לא קיים
+               בדף המפורסם (experience-page.tsx לא מרנדר אותו). */
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+              <p className="rounded-xl border-2 border-dashed border-slate-300 bg-white/80 px-6 py-4 text-center text-sm font-semibold text-slate-500 backdrop-blur-sm">
+                הסצנה ריקה — הוסיפו שכבה (טקסט, תמונה, צורה…)
+                <br />
+                <span className="font-normal text-slate-400">מהפאנל: ״+ הוספת שכבה״</span>
+              </p>
+            </div>
+          )}
         </ExperienceScene>
       ))}
+      {/* הטיימליין חייב להיות *אחרי* הסצנות ב-DOM: sticky bottom-0 נדבק
+          לתחתית ה-scrollport רק כל עוד המיקום הטבעי של האלמנט נמוך מהחלון —
+          כאלמנט ראשון הוא פשוט נגלל החוצה למעלה (ממצא ה-walkthrough:
+          "הסרגל נעלם בדיוק כשבוחנים את הסצנה"). כאחרון — הוא צף בתחתית
+          לכל אורך הגלילה ומתיישב במקומו רק בסוף. */}
+      <TimelineOverlay config={config} selectedSceneId={selectedSceneId} onSelectScene={onSelectScene} />
     </ExperienceProvider>
   );
 }

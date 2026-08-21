@@ -62,3 +62,57 @@ export function bestTextOn(background: string): string {
   const dark = contrastRatio(background, "#101418") ?? 0;
   return white >= dark ? "#FFFFFF" : "#101418";
 }
+
+/** ממיר RGB חזרה להקס בפורמט #RRGGBB */
+export function rgbToHex(r: number, g: number, b: number): string {
+  const c = (v: number) => Math.round(Math.min(255, Math.max(0, v))).toString(16).padStart(2, "0");
+  return `#${c(r)}${c(g)}${c(b)}`.toUpperCase();
+}
+
+/** ערבוב לינארי בין שני צבעי הקס: t=0 → a, t=1 → b. null אם קלט לא תקין. */
+export function mixHex(a: string, b: string, t: number): string | null {
+  const ra = hexToRgb(a);
+  const rb = hexToRgb(b);
+  if (!ra || !rb) return null;
+  const k = Math.min(1, Math.max(0, t));
+  return rgbToHex(
+    ra[0] + (rb[0] - ra[0]) * k,
+    ra[1] + (rb[1] - ra[1]) * k,
+    ra[2] + (rb[2] - ra[2]) * k
+  );
+}
+
+/**
+ * צבע hover נגזר מהצבע הראשי: צבע כהה מוכהה מעט, צבע בהיר מובהר מעט —
+ * אותה התנהגות שכל מערכות העיצוב המסחריות נותנות כברירת מחדל, כדי
+ * שהמשתמש לא יצטרך לתחזק שדה "ראשי במעבר עכבר" ידני (אחד מחמשת
+ * השדות שה-audit סימן כנגזרים; ראו "נגזרים אוטומטית" בטאב העיצוב).
+ */
+export function deriveHover(base: string): string | null {
+  const lum = luminance(base);
+  if (lum === null) return null;
+  return lum > 0.5 ? mixHex(base, "#000000", 0.12) : mixHex(base, "#FFFFFF", 0.14);
+}
+
+/** טקסט משני נגזר: ערבוב הטקסט הראשי לכיוון הרקע (מרוכך אך עדיין קריא ≥4.5:1) */
+export function deriveMuted(text: string, background: string): string | null {
+  // מנסה ריכוך הולך וגובר, ועוצר לפני שהניגודיות יורדת מתחת ל-AA לטקסט רגיל
+  for (const t of [0.45, 0.35, 0.25, 0.15]) {
+    const candidate = mixHex(text, background, t);
+    if (!candidate) return null;
+    const ratio = contrastRatio(candidate, background);
+    if (ratio !== null && ratio >= 4.5) return candidate;
+  }
+  return text;
+}
+
+/** קו מסגרת נגזר: ערבוב טקסט/רקע שעומד בדרישת 3:1 של WCAG 1.4.11 לרכיבי UI */
+export function deriveBorder(text: string, background: string): string | null {
+  for (const t of [0.55, 0.45, 0.35, 0.25]) {
+    const candidate = mixHex(text, background, t);
+    if (!candidate) return null;
+    const ratio = contrastRatio(candidate, background);
+    if (ratio !== null && ratio >= 3) return candidate;
+  }
+  return text;
+}

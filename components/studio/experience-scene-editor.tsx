@@ -257,7 +257,7 @@ export function ExperienceSceneEditor({
         )}
       </PanelSection>
 
-      <PanelSection title="בלוקים קיימים בסצנה הזו">
+      <PanelSection title="בלוקים קיימים בסצנה הזו" collapsible defaultOpen={(scene.blockRefs?.length ?? 0) > 0}>
         <p className="text-xs leading-relaxed text-slate-400">
           מפנים לבלוק אמיתי מהדף (למשל טופס יצירת קשר) בלי לשכפל תוכן —
           הגשר בין חוויית הגלילה לבלוקים הרגילים.

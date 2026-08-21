@@ -171,7 +171,17 @@ export function ExperienceEditor({
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-2 border-b border-slate-200 pb-2">
-        <h2 className="text-sm font-bold text-slate-900">חוויית גלילה</h2>
+        <h2 className="flex items-center gap-2 text-sm font-bold text-slate-900">
+          חוויית גלילה
+          {scenes.length > 0 && (
+            <span
+              title="עומס תנועה כולל — פירוט מלא בסקשן ״הגדרות החוויה״"
+              className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${MOTION_BADGE_CLASS[computeExperienceMotionBudget(config).worst]}`}
+            >
+              {MOTION_BUDGET_LABELS[computeExperienceMotionBudget(config).worst]}
+            </span>
+          )}
+        </h2>
         <button
           type="button"
           onClick={disableExperience}
@@ -289,7 +299,11 @@ export function ExperienceEditor({
         )}
       </PanelSection>
 
-      <PanelSection title="הגדרות כלליות">
+      {/* צמצום UX 21/08 (ממצא #5): שלושת סקשני ההגדרות (כלליות/נגישות/
+          דיבאג) — כולם ONE-TIME/RARE — התאחדו לסקשן מתקפל אחד, סגור
+          כברירת מחדל. הסצנות (האובייקט של כל סשן) נשארות לבד למעלה.
+          פירוט עומס-התנועה חי כאן; הסיכום תמיד גלוי כתג בכותרת. */}
+      <PanelSection title="הגדרות החוויה" collapsible defaultOpen={false}>
         <SliderField
           label="משך ברירת מחדל לסצנה"
           value={config.settings.defaultDurationVh}
@@ -320,9 +334,7 @@ export function ExperienceEditor({
           step={5}
           unit="%"
         />
-      </PanelSection>
-
-      <PanelSection title="נגישות">
+      
         <SelectField
           label='כשמשתמש מבקש "פחות תנועה"'
           value={config.settings.reducedMotion}
@@ -333,17 +345,14 @@ export function ExperienceEditor({
           תמיד מבטל pinning קולנועי — התוכן נשאר גלוי וזורם, פשוט בלי
           ההצמדה. זה חל אוטומטית, לא ניתן לכיבוי.
         </p>
-      </PanelSection>
-
-      <PanelSection title="דיבאג">
+      
         <CheckboxField
           label="הצגת מסגרות סצנה ומספרי progress בתצוגה החיה"
           checked={config.settings.debug}
           onChange={(v) => setSettings("debug", v)}
         />
+              {scenes.length > 0 && <MotionBudgetPanel config={config} />}
       </PanelSection>
-
-      {scenes.length > 0 && <MotionBudgetPanel config={config} />}
     </div>
   );
 }
@@ -368,7 +377,8 @@ const MOTION_TEXT_CLASS: Record<string, string> = {
 function MotionBudgetPanel({ config }: { config: ExperienceConfig }) {
   const budget = computeExperienceMotionBudget(config);
   return (
-    <PanelSection title="עומס תנועה">
+    <div className="space-y-3 border-t border-slate-200 pt-3">
+      <p className="text-xs font-bold text-slate-700">עומס תנועה</p>
       <div className="flex items-center justify-between">
         <span className="text-sm text-slate-600">כלל החוויה</span>
         <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${MOTION_BADGE_CLASS[budget.worst]}`}>
@@ -395,6 +405,6 @@ function MotionBudgetPanel({ config }: { config: ExperienceConfig }) {
           טשטוש שפעילות בו-זמנית באותה סצנה.
         </p>
       )}
-    </PanelSection>
+    </div>
   );
 }

@@ -559,6 +559,19 @@
 }
 
 /**
+ * גדלי כותרות לשכבות טקסט של ה-Experience (תיקון 21/08, ממצא ה-audit
+ * "preset מבטיח כותרת גדולה ומספק טקסט קטן"): לתגי h1-h4 אין font-size
+ * גלובלי — הבלוקים נותנים גודל דרך מחלקות Tailwind, אבל TextLayer מרנדר
+ * תג חשוף שיורש מה-preflight את גודל הבסיס. אותו מיפוי בדיוק כמו
+ * בבלוקים: h1=display (כמו כותרת ה-Hero), h2-h4 לפי הטוקנים שלהם.
+ * ממוקד ל-.exp-motion בלבד — אפס השפעה על שאר האתר.
+ */
+.exp-motion h1 { font-size: var(--ds-fs-display); }
+.exp-motion h2 { font-size: var(--ds-fs-h2); }
+.exp-motion h3 { font-size: var(--ds-fs-h3); }
+.exp-motion h4 { font-size: var(--ds-fs-base); font-weight: 700; }
+
+/**
  * Scene transitions (Phase 4, docs/experience-audit.md §4.1/§18 Phase 4).
  * ה-runtime כותב --exp-scene-progress על ה-<section data-experience-scene>
  * בכל פריים; ה-CSS כאן קורא אותו ישירות -- אין כתיבת JS נוספת בשביל
